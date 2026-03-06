@@ -179,7 +179,7 @@ Solution: [How to fix]
 ### Best practices for instructions
 
 **Be specific and actionable:**
-```
+```text
 # Good
 Run `python scripts/validate.py --input {filename}` to check data format.
 If validation fails, common issues include:
@@ -191,7 +191,8 @@ Validate the data before proceeding.
 ```
 
 **Reference bundled resources clearly:**
-```
+
+```text
 Before running queries, consult `references/api-patterns.md` for:
 - Rate limiting guidance
 - Pagination patterns
@@ -205,27 +206,33 @@ Before running queries, consult `references/api-patterns.md` for:
 ## Common Skill Use Case Categories
 
 ### Category 1: Document & Asset Creation
+
 Creating consistent, high-quality output (documents, presentations, apps, designs, code).
 
 Key techniques:
+
 - Embedded style guides and brand standards
 - Template structures for consistent output
 - Quality checklists before finalizing
 - No external tools required — uses Claude's built-in capabilities
 
 ### Category 2: Workflow Automation
+
 Multi-step processes that benefit from consistent methodology.
 
 Key techniques:
+
 - Step-by-step workflow with validation gates
 - Templates for common structures
 - Built-in review and improvement suggestions
 - Iterative refinement loops
 
 ### Category 3: MCP Enhancement
+
 Workflow guidance to enhance the tool access an MCP server provides.
 
 Key techniques:
+
 - Coordinates multiple MCP calls in sequence
 - Embeds domain expertise
 - Provides context users would otherwise need to specify
@@ -236,13 +243,17 @@ Key techniques:
 ## Testing
 
 ### 1. Triggering tests
+
 Ensure your skill loads at the right times.
+
 - Triggers on obvious tasks
 - Triggers on paraphrased requests
 - Doesn't trigger on unrelated topics
 
 ### 2. Functional tests
+
 Verify the skill produces correct outputs.
+
 - Valid outputs generated
 - API calls succeed
 - Error handling works
@@ -252,11 +263,13 @@ Verify the skill produces correct outputs.
 Prove the skill improves results vs. baseline.
 
 ### Quantitative metrics (aspirational targets)
+
 - Skill triggers on 90% of relevant queries
 - Completes workflow in X tool calls
 - 0 failed API calls per workflow
 
 ### Qualitative metrics
+
 - Users don't need to prompt Claude about next steps
 - Workflows complete without user correction
 - Consistent results across sessions
@@ -267,12 +280,12 @@ Prove the skill improves results vs. baseline.
 
 The skill-creator skill is built into Claude.ai and available as a Claude Code plugin (`/plugins` to install). It operates in **4 modes**:
 
-| Mode          | What it does                                                                                                                              |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| **Create**    | Generates skills from natural language descriptions. Produces properly formatted SKILL.md with frontmatter, suggests trigger phrases.      |
-| **Eval**      | Creates test cases and runs them against your skill to verify it works correctly.                                                          |
-| **Improve**   | Identifies what's not working, revises instructions, and optimizes trigger descriptions through iterative feedback loops.                  |
-| **Benchmark** | Runs blind A/B comparisons between skill-enabled and no-skill runs, with variance analysis to prove the skill actually helps.             |
+| Mode | What it does |
+| --- | --- |
+| **Create** | Generates skills from natural language descriptions. Produces properly formatted SKILL.md with frontmatter, suggests trigger phrases. |
+| **Eval** | Creates test cases and runs them against your skill to verify it works correctly. |
+| **Improve** | Identifies what's not working, revises instructions, and optimizes trigger descriptions through iterative feedback loops. |
+| **Benchmark** | Runs blind A/B comparisons between skill-enabled and no-skill runs, with variance analysis to prove the skill actually helps. |
 
 Sources: [Anthropic's official guide](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf), [tessl.io analysis](https://tessl.io/blog/anthropic-brings-evals-to-skill-creator-heres-why-thats-a-big-deal/), [video walkthrough](https://www.youtube.com/watch?v=qXWz-V_XMOc).
 
@@ -349,6 +362,8 @@ After a benchmark run, skill-creator produces:
 
 ### Quick start
 
+**Claude.ai** (slash command):
+
 ```bash
 # Install the plugin (Claude Code) — one of:
 /plugin install skill-creator@claude-plugin-directory
@@ -358,12 +373,30 @@ After a benchmark run, skill-creator produces:
 /skill-creator "Make me an SEO audit skill"
 → "yes, run evals as well"
 
+# Evaluate an existing skill
+/skill-creator "Evaluate my branded-docx skill and run test cases"
+
 # Benchmark an existing skill
 /skill-creator "Run an A/B test on my branded-docx skill"
 
 # Optimize trigger description
 /skill-creator "Optimize the description of my branded-docx skill to trigger more reliably"
 ```
+
+**Claude Code** (natural language — give it the path so it knows which skill):
+
+```text
+Evaluate my branded-docx skill at skills/branded-docx/ — run test cases and benchmark it
+```
+
+The path is how skill-creator finds your `SKILL.md`. From there it:
+
+1. Generates 2-3 realistic test prompts and shows them for your approval
+2. Spawns parallel runs: one with the skill, one without (baseline)
+3. Grades results and opens a side-by-side viewer for review
+4. Iterates based on your feedback
+
+For description optimization, it runs a separate automated loop — generates 20 trigger/non-trigger queries, splits 60/40 train/test, and iterates up to 5 times rewriting the description to improve trigger accuracy.
 
 ---
 
