@@ -1,6 +1,6 @@
 # claude-skills
 
-Personal [Claude.ai](https://claude.ai) skill library by [@dzivkovi](https://github.com/dzivkovi).
+Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
 Each skill is a portable `.skill` file (a ZIP under the hood) that you upload once to Claude's settings and it permanently changes how Claude behaves - no prompting, no reminding, no repeating yourself.
 
@@ -45,16 +45,20 @@ More skills will be added as the need arises.
 ```
 claude-skills/
   skills/
-    branded-docx/                       # Skill 01: Anthropic-styled Word documents
+    branded-docx/                       # Skill: Anthropic-styled Word documents
       SKILL.md                          # Instructions Claude reads at runtime
       references/
         brand-system.md                 # Full color, typography, and layout reference
         setup-and-prerequisites.md      # Node.js, fonts, npm setup guide
       scripts/
         setup/
-          install-fonts-windows.ps1     # One-click Poppins installer for Windows
+          install-anthropic-fonts.ps1   # One-click Poppins installer for Windows
       assets/
         branded-sample.docx             # Preview the output before generating
+  releases/
+    branded-docx.skill                  # Ready-to-upload build (ZIP)
+  scripts/
+    build-skills.sh                     # Packages skills/ into releases/
   README.md
 ```
 
@@ -68,7 +72,7 @@ Each skill follows the same folder convention:
 
 ## Installing a skill
 
-1. Download the `.skill` file from the [`skills/`](./skills/) folder (or the [Releases](../../releases) page once available)
+1. Download the `.skill` file from the [`releases/`](./releases/) folder (or the [Releases](../../releases) page once available)
 2. Go to [claude.ai](https://claude.ai) > Settings > Capabilities > Skills
 3. Click "Upload skill" and select the `.skill` file
 4. Done - the skill is active in all future conversations
@@ -78,7 +82,7 @@ Each skill follows the same folder convention:
 The branded-docx skill requires two fonts and Node.js. See [`setup-and-prerequisites.md`](./skills/branded-docx/references/setup-and-prerequisites.md) for full instructions, or run the Windows font installer directly:
 
 ```
-skills/branded-docx/scripts/setup/install-fonts-windows.ps1
+skills/branded-docx/scripts/setup/install-anthropic-fonts.ps1
 ```
 
 Right-click > Run with PowerShell. Takes about 30 seconds.

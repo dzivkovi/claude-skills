@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # build-skills.sh
 # Packages each skill in skills/ into a .skill file in releases/.
-# Produces two files per skill: a versioned build and a -latest alias.
 #
 # Usage:
 #   ./scripts/build-skills.sh              # build all skills
@@ -9,7 +8,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/..")" && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$REPO_ROOT/skills"
 RELEASES_DIR="$REPO_ROOT/releases"
 
@@ -35,35 +34,24 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     continue
   fi
 
-  # Extract version from YAML frontmatter (version: x.y.z)
-  version="$(grep -m1 '^version:' "$skill_md" | sed 's/version:[[:space:]]*//' | tr -d '"' || true)"
-  if [ -z "$version" ]; then
-    echo "  skip: $skill_name (no version: field in SKILL.md frontmatter)"
-    skipped=$((skipped + 1))
-    continue
-  fi
-
-  versioned_file="$RELEASES_DIR/${skill_name}-v${version}.skill"
-  latest_file="$RELEASES_DIR/${skill_name}-latest.skill"
+  out_file="$RELEASES_DIR/${skill_name}.skill"
 
   # Pack into a temp location then move (avoids partial writes)
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
 
   cp -r "$skill_dir" "$tmp_dir/$skill_name"
-  (cd "$tmp_dir" && zip -r "$versioned_file" "$skill_name/" \
+  (cd "$tmp_dir" && zip -r "$out_file" "$skill_name/" \
     --exclude "*/.DS_Store" \
     --exclude "*/__pycache__/*" \
     --exclude "*/*.pyc" \
     -q)
 
-  cp "$versioned_file" "$latest_file"
   rm -rf "$tmp_dir"
   trap - EXIT
 
-  size="$(du -sh "$versioned_file" | cut -f1)"
-  echo "  built: ${skill_name}-v${version}.skill  (${size})"
-  echo "         ${skill_name}-latest.skill updated"
+  size="$(du -sh "$out_file" | cut -f1)"
+  echo "  built: ${skill_name}.skill  (${size})"
   built=$((built + 1))
 done
 

@@ -1,6 +1,9 @@
 ---
 name: branded-docx
 description: "Creates Word (.docx) documents styled with Anthropic's visual identity: coral accent (#D97757), near-black text (#141413), off-white tone (#FAF9F5), Poppins headings, Georgia body text. Use whenever the user wants a polished, professional Word document, report, brief, memo, or playbook that looks like it came from Anthropic. Triggers include: 'branded report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', or any .docx request where visual quality matters. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
+metadata:
+  author: Daniel Zivkovic
+  version: 1.0.0
 ---
 
 # Branded DOCX - Anthropic Visual Identity
@@ -15,7 +18,7 @@ This skill extends the base `docx` skill with Anthropic's design system. Follow 
 |------|------------|--------------|
 | `references/brand-system.md` | Full color/type/layout system with copy-paste templates | Always - read before generating any document |
 | `references/setup-and-prerequisites.md` | Node.js, docx npm, font install instructions for Windows/Mac/Linux | When user hits a setup error or asks how to install fonts |
-| `scripts/setup/install-fonts-windows.ps1` | One-click Windows font installer - right-click > Run with PowerShell | Point users here for Windows font setup |
+| `scripts/setup/install-anthropic-fonts.ps1` | One-click Windows font installer - right-click > Run with PowerShell | Point users here for Windows font setup |
 | `assets/branded-sample.docx` | Pre-generated sample showing the full brand system in action | Tell users to open this to preview the output before committing |
 
 ---
@@ -63,7 +66,7 @@ Generate the document from the user's description using the same conversion rule
 Before the first document generates correctly, the user needs:
 1. Node.js installed - check with `node --version`
 2. `npm install -g docx` run once
-3. Poppins font installed - see `scripts/setup/install-fonts-windows.ps1` (Windows) or `references/setup-and-prerequisites.md` (Mac/Linux)
+3. Poppins font installed - see `scripts/setup/install-anthropic-fonts.ps1` (Windows) or `references/setup-and-prerequisites.md` (Mac/Linux)
 
 Full details and troubleshooting: `references/setup-and-prerequisites.md`
 

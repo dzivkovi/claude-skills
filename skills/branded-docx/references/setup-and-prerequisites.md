@@ -53,11 +53,11 @@ Branded documents use two fonts:
 
 ### Windows - automated install
 
-A PowerShell script is bundled with this skill at `scripts/setup/install-fonts-windows.ps1`.
+A PowerShell script is bundled with this skill at `scripts/setup/install-anthropic-fonts.ps1`.
 
 Steps:
 1. Open File Explorer and navigate to the `scripts/setup/` folder inside the skill directory
-2. Right-click `install-fonts-windows.ps1`
+2. Right-click `install-anthropic-fonts.ps1`
 3. Choose "Run with PowerShell"
 4. If Windows shows a security prompt, click **Yes**
 5. The script prints what it found, downloads what is missing, and exits
