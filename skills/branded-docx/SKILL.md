@@ -1,6 +1,6 @@
 ---
 name: branded-docx
-description: "Creates Word (.docx) documents styled with Anthropic's visual identity: coral accent (#D97757), near-black text (#141413), off-white tone (#FAF9F5), Poppins headings, Georgia body text. Use whenever the user wants a polished, professional Word document, report, brief, memo, or playbook that looks like it came from Anthropic. Triggers include: 'branded report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', or any .docx request where visual quality matters. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
+description: "Creates Word (.docx) documents styled with Anthropic's visual identity: coral accent (#D97757), near-black text (#141413), off-white tone (#FAF9F5), Poppins headings, Georgia body text. Use whenever the user wants a polished, professional Word document, report, brief, memo, or playbook that looks like it came from Anthropic. Triggers include: 'branded report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', or any .docx request where visual quality matters. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 ---
 
 # Branded DOCX - Anthropic Visual Identity
@@ -17,6 +17,44 @@ This skill extends the base `docx` skill with Anthropic's design system. Follow 
 | `references/setup-and-prerequisites.md` | Node.js, docx npm, font install instructions for Windows/Mac/Linux | When user hits a setup error or asks how to install fonts |
 | `scripts/setup/install-fonts-windows.ps1` | One-click Windows font installer - right-click > Run with PowerShell | Point users here for Windows font setup |
 | `assets/branded-sample.docx` | Pre-generated sample showing the full brand system in action | Tell users to open this to preview the output before committing |
+
+---
+
+## Markdown Input - Conversion Rules
+
+When the user provides a markdown file (attached or pasted), apply these mappings automatically. The user should never need to explain these - they are part of this skill.
+
+| Markdown element | Branded DOCX equivalent |
+|-----------------|------------------------|
+| First `#` heading | Cover page title (Poppins Bold 36pt, dark `141413`) + coral top bar |
+| First `>` blockquote after `#` | Cover page subtitle (Georgia italic, mid gray) |
+| Any date-like line on the first page | Cover page date (Poppins, mid gray) |
+| `##` heading | H1 section heading (Poppins Bold 26pt, coral `D97757`, bottom border) |
+| `###` heading | H2 sub-heading (Poppins Bold 18pt, dark) |
+| `####` heading | H3 sub-heading (Poppins Bold 13pt, dark) |
+| Regular paragraph | Body text (Georgia 11pt, dark) |
+| `> blockquote` (body) | Callout block (left coral border, indented, Georgia body + Poppins bold label) |
+| `- ` or `* ` bullet list | Bulleted list (coral bullet dot, Georgia body, indented) |
+| `1.` numbered list | Numbered list (Georgia body, indented) |
+| `---` horizontal rule | Section divider (light gray bottom border, breathing space) |
+| `| table |` | Branded table (dark `141413` header row, alternating light gray rows) |
+| `**bold**` | Bold TextRun (same font as context) |
+| `*italic*` | Italic TextRun (same font as context) |
+| `` `inline code` `` | Inline Poppins monospace-style run, mid gray |
+| Fenced code block | Indented block, Poppins 9pt, light gray background shading |
+
+### Cover page detection
+
+If the markdown begins with a `#` title, treat the document as having a cover page. Extract:
+- Title: the `#` text
+- Subtitle: the first blockquote or italicised line immediately after the title (if present)
+- Date: any line matching a date pattern (e.g. "March 2026", "2026-03-06") in the first 10 lines
+
+If no cover page signals are found, start directly with an H1 and skip the cover page pattern.
+
+### When no markdown is provided
+
+Generate the document from the user's description using the same conversion rules to decide element types. Ask for content if none is given.
 
 ---
 
