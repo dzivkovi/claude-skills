@@ -128,3 +128,12 @@ Usually caused by an incomplete generation. Ask Claude to regenerate - it valida
 
 **Georgia body text looks different from the sample**
 Georgia renders slightly differently across Windows versions and display DPI settings. This is expected and does not affect the brand integrity.
+
+**Script fails with "Cannot find module 'docx'" (Claude Code / Git Bash)**
+Node.js cannot resolve globally-installed npm packages when the working directory is not the global prefix. This commonly happens in Claude Code on Windows (Git Bash). Fix by adding to your `~/.bashrc`:
+
+```bash
+export NODE_PATH=$(npm root -g)
+```
+
+The skill's generated scripts include an automatic NODE_PATH preamble, but setting it in your shell profile ensures it works everywhere.

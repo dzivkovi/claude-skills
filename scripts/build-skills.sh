@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./scripts/build-skills.sh              # build all skills
-#   ./scripts/build-skills.sh branded-docx # build one skill by name
+#   ./scripts/build-skills.sh coral-docx # build one skill by name
 
 set -euo pipefail
 

@@ -374,19 +374,19 @@ After a benchmark run, skill-creator produces:
 → "yes, run evals as well"
 
 # Evaluate an existing skill
-/skill-creator "Evaluate my branded-docx skill and run test cases"
+/skill-creator "Evaluate my coral-docx skill and run test cases"
 
 # Benchmark an existing skill
-/skill-creator "Run an A/B test on my branded-docx skill"
+/skill-creator "Run an A/B test on my coral-docx skill"
 
 # Optimize trigger description
-/skill-creator "Optimize the description of my branded-docx skill to trigger more reliably"
+/skill-creator "Optimize the description of my coral-docx skill to trigger more reliably"
 ```
 
 **Claude Code** (natural language — give it the path so it knows which skill):
 
 ```text
-Evaluate my branded-docx skill at skills/branded-docx/ — run test cases and benchmark it
+Evaluate my coral-docx skill at skills/coral-docx/ — run test cases and benchmark it
 ```
 
 The path is how skill-creator finds your `SKILL.md`. From there it:

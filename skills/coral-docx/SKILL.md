@@ -1,12 +1,12 @@
 ---
-name: branded-docx
-description: "Creates Word (.docx) documents styled with Anthropic's visual identity: coral accent (#D97757), near-black text (#141413), off-white tone (#FAF9F5), Poppins headings, Georgia body text. Use whenever the user wants a polished, professional Word document, report, brief, memo, or playbook that looks like it came from Anthropic. Triggers include: 'branded report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', or any .docx request where visual quality matters. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
+name: coral-docx
+description: "Creates Word (.docx) documents styled with Anthropic's visual identity: coral accent (#D97757), near-black text (#141413), off-white tone (#FAF9F5), Poppins headings, Georgia body text. Use whenever the user wants a polished, professional Word document, report, brief, memo, or playbook that looks like it came from Anthropic. Triggers include: 'coral report', 'coral docx', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', or any .docx request where visual quality matters. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 metadata:
   author: Daniel Zivkovic
   version: 1.0.0
 ---
 
-# Branded DOCX - Anthropic Visual Identity
+# Coral DOCX - Anthropic Visual Identity
 
 This skill extends the base `docx` skill with Anthropic's design system. Follow all technical rules from the base DOCX skill (fonts, lists, tables, page size, etc.). This file adds the brand layer on top.
 
@@ -104,9 +104,16 @@ Read `references/brand-system.md` for full design system details and copy-paste 
 
 ## Mandatory Style Overrides
 
-Always override the default docx style block with this brand configuration:
+Always override the default docx style block with this brand configuration. Every generated script must start with the NODE_PATH preamble so that globally-installed npm packages are found regardless of the working directory:
 
 ```javascript
+// Ensure globally-installed npm packages are resolvable
+const { execSync } = require('child_process');
+if (!process.env.NODE_PATH) {
+  process.env.NODE_PATH = execSync('npm root -g').toString().trim();
+  require('module').Module._initPaths();
+}
+
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
         Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
         ShadingType, LevelFormat, PageNumber, TabStopType, TabStopPosition,
@@ -322,6 +329,13 @@ function brandTable(headers, rows, contentWidth = 9360) {
 ## Minimal Full Document Example
 
 ```javascript
+// Ensure globally-installed npm packages are resolvable
+const { execSync } = require('child_process');
+if (!process.env.NODE_PATH) {
+  process.env.NODE_PATH = execSync('npm root -g').toString().trim();
+  require('module').Module._initPaths();
+}
+
 const fs = require('fs');
 const doc = new Document({
   styles: brandStyles,

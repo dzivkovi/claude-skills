@@ -34,7 +34,7 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
-| [branded-docx](./skills/branded-docx/) | Generates Word documents styled with Anthropic's visual identity (Poppins headings, Georgia body, coral `#D97757` accents) | `branded report`, `professional Word doc`, `Anthropic style`, `make it look professional` |
+| [coral-docx](./skills/coral-docx/) | Generates Word documents styled with Anthropic's visual identity (Poppins headings, Georgia body, coral `#D97757` accents) | `branded report`, `professional Word doc`, `Anthropic style`, `make it look professional` |
 
 More skills will be added as the need arises.
 
@@ -45,7 +45,7 @@ More skills will be added as the need arises.
 ```
 claude-skills/
   skills/
-    branded-docx/                       # Skill: Anthropic-styled Word documents
+    coral-docx/                       # Skill: Anthropic-styled Word documents
       SKILL.md                          # Instructions Claude reads at runtime
       references/
         brand-system.md                 # Full color, typography, and layout reference
@@ -56,7 +56,7 @@ claude-skills/
       assets/
         branded-sample.docx             # Preview the output before generating
   releases/
-    branded-docx.skill                  # Ready-to-upload build (ZIP)
+    coral-docx.skill                  # Ready-to-upload build (ZIP)
   scripts/
     build-skills.sh                     # Packages skills/ into releases/
   README.md
@@ -77,12 +77,12 @@ Each skill follows the same folder convention:
 3. Click "Upload skill" and select the `.skill` file
 4. Done - the skill is active in all future conversations
 
-### First-time setup (branded-docx)
+### First-time setup (coral-docx)
 
-The branded-docx skill requires two fonts and Node.js. See [`setup-and-prerequisites.md`](./skills/branded-docx/references/setup-and-prerequisites.md) for full instructions, or run the Windows font installer directly:
+The coral-docx skill requires two fonts and Node.js. See [`setup-and-prerequisites.md`](./skills/coral-docx/references/setup-and-prerequisites.md) for full instructions, or run the Windows font installer directly:
 
 ```
-skills/branded-docx/scripts/setup/install-anthropic-fonts.ps1
+skills/coral-docx/scripts/setup/install-anthropic-fonts.ps1
 ```
 
 Right-click > Run with PowerShell. Takes about 30 seconds.
