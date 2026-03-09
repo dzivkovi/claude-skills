@@ -8,10 +8,10 @@ RE/MAX brand system: red-white-blue color palette, bold sans-serif typography, n
 
 ```javascript
 const BRAND = {
-  dark:       "000000",   // black — primary text, dark backgrounds
+  dark:       "232323",   // dark charcoal — softer than pure black, premium feel
   light:      "FFFFFF",   // white — page tone (print-friendly, saves toner)
-  midGray:    "232323",   // dark charcoal — captions, metadata, secondary text
-  lightGray:  "F0F0F0",   // light gray — table zebra rows, subtle dividers
+  midGray:    "8A8780",   // warm gray — captions, metadata, secondary text
+  lightGray:  "EDEAE0",   // warm cream-gray — table zebra rows, subtle dividers (originally F0F0F0)
   accent:     "0C2749",   // bridge blue (deep navy) — primary accent
   secondary:  "AA1120",   // bridge red — secondary accent, action items
   tertiary:   "A3D4F2",   // sky blue — tertiary accent, soft highlights
@@ -33,6 +33,10 @@ const DEFAULTS = {
   company: "RE/MAX Your Community Realty Inc."
 };
 ```
+
+### Why warm neutrals?
+
+The original brand guide pairs its reds and blues with pure black (`#000000`) and cold gray (`#F0F0F0`). Those work for signage and web, but in a printed Word document they read "corporate memo." Dark charcoal (`#232323`) is softer on the eye, and cream-gray (`#EDEAE0`) zebra rows give tables a warm, tactile quality that says "luxury property document" — not "spreadsheet printout." The cream tone (`#F7F5EE`) from the brand guide inspired this warmth.
 
 ### Why Bridge colors, not Primary?
 
@@ -79,7 +83,7 @@ const brandStyles = {
     },
     {
       id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 26, bold: true, color: BRAND.dark },
+      run: { font: BRAND.heading, size: 22, bold: true, color: BRAND.midGray },
       paragraph: { spacing: { before: 240, after: 80 }, outlineLevel: 2 }
     },
     {
@@ -105,7 +109,7 @@ const brandStyles = {
 - H1 uses navy heading with a **red** bottom border (not accent) — the two-color interplay is core to RE/MAX identity
 - Callout blocks use red left border (secondary) to echo the "action bar" pattern from RE/MAX signage
 - H2 uses navy (accent) without a border — cleaner hierarchy
-- H3 uses black — third level fades to neutral
+- H3 uses warm gray — third level fades to neutral, reducing visual weight
 
 ---
 
@@ -127,10 +131,12 @@ numbering: {
 
 ## Design Principles
 
-- **Bold and direct.** RE/MAX is not subtle — use strong contrasts, all-caps headings where appropriate. Navy headers on white feel authoritative.
+- **Confident, not loud.** Navy headers on warm cream-gray feel authoritative without shouting. Let the content command attention — the brand stays understated and professional.
 - **Red is for action.** Use Bridge Red only for callout labels, accent bars, and emphasis elements. One or two red elements per page maximum. Red on red backgrounds is never permitted.
 - **One sans-serif family.** Montserrat for structure, Arial for reading. Both are clean sans-serifs that pair naturally. Never use serif fonts in RE/MAX documents.
-- **White space matters.** The brand guide emphasizes clean, uncluttered layouts. Generous spacing between sections.
+- **White space first.** Generous `spacing.before` and `spacing.after` on every element. Never crowd content. The brand guide emphasizes clean, uncluttered layouts.
+- **Dense tables, airy prose.** Use 9.5pt Arial (size 19) for table data cells — tighter than body text, giving tables professional financial-document density. Body prose stays at 11pt.
+- **Tonal color.** Navy (accent) for authority and structure, red (secondary) for action and emphasis, sky blue (tertiary) for positive findings or soft highlights. This is a creative judgment — adapt the palette to the document's emotional context.
 
 ---
 
@@ -138,24 +144,33 @@ numbering: {
 
 | Role | Hex | Use |
 | ---- | --- | --- |
-| Dark | `000000` | All body text, strong backgrounds |
+| Dark | `232323` | All body text, strong backgrounds (dark charcoal, not pure black) |
 | Light | `FFFFFF` | Page tone, white background (print-friendly) |
-| Dark Charcoal | `232323` | Captions, metadata, subdued text |
-| Light Gray | `F0F0F0` | Table zebra rows, subtle dividers |
+| Mid Gray | `8A8780` | Captions, metadata, subdued text |
+| Light Gray | `EDEAE0` | Table zebra rows, subtle dividers (warm cream-gray, originally `F0F0F0`) |
 | **Accent** | `0C2749` | H1/H2 headings, table headers, cover elements |
 | **Secondary** | `AA1120` | Action bars, callout labels, bullet accents |
 | Tertiary | `A3D4F2` | Soft highlights, info boxes |
+| Accent tint | `F0F2F8` | Faint navy background for emphasis callouts |
+| Warm tint | `FBF9F4` | Faint cream background for subtle section highlights |
+| Alert tint | `FDF5F5` | Faint red background for caution/action callouts |
+| Success tint | `F0F5FB` | Faint sky blue background for positive callouts |
 
 ## Typography Reference
 
 | Element | Font | Fallback | Size (pt) | docx units |
 | ------- | ---- | -------- | --------- | ---------- |
 | Cover title | Montserrat Bold | Arial Bold | 36 | 72 |
+| Cover category | Montserrat Bold | Arial Bold | 22 | 44 |
 | H1 | Montserrat Bold | Arial Bold | 26 | 52 |
 | H2 | Montserrat Bold | Arial Bold | 18 | 36 |
-| H3 | Montserrat Bold | Arial Bold | 13 | 26 |
+| H3 | Montserrat Bold | Arial Bold | 11 | 22 |
 | Body | Arial | Calibri | 11 | 22 |
+| Table data | Arial | Calibri | 9.5 | 19 |
+| Table header | Montserrat Bold | Arial Bold | 9 | 18 |
+| Label | Montserrat | Arial | 8.5 | 17 |
 | Caption | Montserrat | Arial | 9 | 18 |
+| Fine print | Arial Italic | Calibri | 7.5 | 15 |
 | Footer | Montserrat | Arial | 8 | 16 |
 
 ---
