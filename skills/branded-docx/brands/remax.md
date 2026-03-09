@@ -30,7 +30,7 @@ const DEFAULTS = {
   title: "Sales Representative",
   phone: "647-273-5318",
   email: "info@jasminahomes.ca",
-  brokerage: "RE/MAX Your Community Realty Inc."
+  company: "RE/MAX Your Community Realty Inc."
 };
 ```
 

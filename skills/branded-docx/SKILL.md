@@ -3,7 +3,7 @@ name: branded-docx
 description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files. Use whenever the user wants a branded, professional Word document, report, brief, memo, or playbook. Triggers include: 'branded report', 'coral docx', 'coral report', 'remax report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', or any .docx request where visual quality matters. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 metadata:
   author: Daniel Zivkovic
-  version: 2.0.0
+  version: 2.1.0
 ---
 
 # Branded DOCX - Pluggable Brand Themes
@@ -40,14 +40,14 @@ When the user provides markdown, apply these mappings automatically:
 
 | Markdown element | Branded DOCX equivalent |
 |-----------------|------------------------|
-| First `#` heading | Cover page title (heading font, bold, dark) + accent top bar |
-| First `>` blockquote after `#` | Cover page subtitle (body font italic, mid gray) |
+| First `#` heading | Cover page: if title contains a document type (e.g., "Market Value Analysis"), split into category (accent) + subject (dark). Otherwise, full title in dark + accent top bar |
+| First `>` blockquote after `#` | Cover page subtitle (heading font italic, mid gray) |
 | Any date-like line in first 10 lines | Cover page date (heading font, mid gray) |
 | `##` heading | H1 section heading (heading font bold, accent color, bottom border) |
 | `###` heading | H2 sub-heading (heading font bold, dark) |
 | `####` heading | H3 sub-heading (heading font bold, dark) |
 | Regular paragraph | Body text (body font 11pt, dark) |
-| `> blockquote` (body) | Callout block (left accent border, indented) |
+| `> blockquote` (body) | Callout block (left accent border, accent tint background, indented) |
 | `- ` or `* ` bullet list | Bulleted list (accent bullet dot, body font) |
 | `1.` numbered list | Numbered list (body font) |
 | `---` horizontal rule | Section divider (light gray bottom border) |
@@ -60,11 +60,27 @@ When the user provides markdown, apply these mappings automatically:
 ### Cover page detection
 
 If the markdown begins with a `#` title, treat the document as having a cover page. Extract:
-- Title: the `#` text
+- Category: if the title names a document type (e.g., "Market Value Analysis", "Comparative Market Analysis", "Project Brief"), use it as the category line in accent
+- Title: the main subject — often a property address, project name, or entity. If a category was extracted, look for the subject in the subtitle or first few lines
 - Subtitle: first blockquote or italicised line after the title
 - Date: any date pattern (e.g. "March 2026", "2026-03-06") in the first 10 lines
 
 If no cover page signals are found, start with H1 directly.
+
+### Tonal adaptation
+
+The brand file provides a design vocabulary — not rigid rules. Adapt the palette to the document's emotional context:
+
+- Use **accent tint backgrounds** on callout blocks for emphasis or caution
+- Use **success tint backgrounds** (from the brand's tertiary color) for positive findings or benefits
+- Use the **secondary color** for neutral data highlights or informational elements
+- For data-heavy documents (financial reports, CMAs, analyses), use the **table data size** (9.5pt) from the brand's Typography Reference — this gives tables professional density without sacrificing readability
+
+The brand file defines the palette; you decide when each color serves the content best.
+
+### Text fidelity
+
+When converting user-provided markdown, preserve the exact wording. Do not paraphrase, summarize, reorder sections, or add/remove content. Styling, color, and layout decisions are yours — the text is the user's.
 
 ### When no markdown is provided
 
@@ -76,7 +92,7 @@ Logos are **off by default**. Only include a brand logo when the user explicitly
 
 ### Default contact info
 
-Brand files may include a `DEFAULTS` object with contact details (name, title, phone, email). When generating signature blocks or contact sections, use these defaults if the user hasn't specified their own info. User-provided values always override defaults. If the brand file has no `DEFAULTS`, ask the user for contact info when needed. Do not add a website line to signature blocks unless the source document explicitly mentions one.
+Brand files may include a `DEFAULTS` object with contact details (name, title, company, phone, email). When generating signature blocks or contact sections, use these defaults if the user hasn't specified their own info. User-provided values always override defaults. If the brand file has no `DEFAULTS`, ask the user for contact info when needed. Do not add a website line to signature blocks unless the source document explicitly mentions one.
 
 ---
 
@@ -122,14 +138,21 @@ function brandHeader(title) {
 
 ### Branded Footer
 
+When the brand file has a `DEFAULTS` object, use the contact info in the footer. Fall back to "Confidential" if no defaults are available.
+
 ```javascript
 function brandFooter() {
+  // Build a single-line contact string from DEFAULTS (if available)
+  const parts = [DEFAULTS.name, DEFAULTS.title, DEFAULTS.company, DEFAULTS.phone].filter(Boolean);
+  const contactLine = parts.length > 0 ? parts.join("  |  ") : "Confidential";
+
   return new Footer({
     children: [
       new Paragraph({
         border: { top: { style: BorderStyle.SINGLE, size: 4, color: BRAND.lightGray, space: 4 } },
+        spacing: { before: 120, after: 0 },
         children: [
-          new TextRun({ text: "Confidential", font: BRAND.heading, size: 14, color: BRAND.midGray })
+          new TextRun({ text: contactLine, font: BRAND.heading, size: 14, color: BRAND.midGray })
         ]
       })
     ]
@@ -139,25 +162,31 @@ function brandFooter() {
 
 ### Cover Page
 
+The cover page supports an optional `category` parameter for a type-first reading order — the document type appears first in accent (e.g., "MARKET VALUE ANALYSIS"), then the subject in large dark text. If no category is provided, the title displays at full size as before.
+
 ```javascript
-function coverPage(title, subtitle, date) {
+function coverPage(title, subtitle, date, category) {
   return [
     new Paragraph({
       border: { top: { style: BorderStyle.SINGLE, size: 48, color: BRAND.accent, space: 0 } },
-      spacing: { before: 0, after: 2880 },
+      spacing: { before: 0, after: 3200 },
       children: []
     }),
-    new Paragraph({
-      children: [new TextRun({ text: title, font: BRAND.heading, size: 72, bold: true, color: BRAND.dark })],
-      spacing: { before: 0, after: 240 }
-    }),
+    category ? new Paragraph({
+      children: [new TextRun({ text: category, font: BRAND.heading, size: 44, bold: true, color: BRAND.accent })],
+      spacing: { before: 0, after: 200 }
+    }) : null,
     subtitle ? new Paragraph({
-      children: [new TextRun({ text: subtitle, font: BRAND.body, size: 28, color: BRAND.midGray, italics: true })],
-      spacing: { before: 0, after: 480 }
+      children: [new TextRun({ text: subtitle, font: BRAND.heading, size: 28, color: BRAND.midGray, italics: true })],
+      spacing: { before: 0, after: 320 }
     }) : null,
     new Paragraph({
+      children: [new TextRun({ text: title, font: BRAND.heading, size: category ? 56 : 72, bold: true, color: BRAND.dark })],
+      spacing: { before: 0, after: 240 }
+    }),
+    new Paragraph({
       border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND.lightGray, space: 8 } },
-      spacing: { before: 0, after: 240 }, children: []
+      spacing: { before: 0, after: 400 }, children: []
     }),
     date ? new Paragraph({
       children: [new TextRun({ text: date, font: BRAND.heading, size: 20, color: BRAND.midGray })],
@@ -181,9 +210,12 @@ function sectionDivider() {
 
 ### Callout Block
 
+Add a faint tinted background to callout blocks for visual weight. Use the accent tint by default; switch to the success tint (or other tonal colors from the brand file) when the content is positive or celebratory. The left border + tint combination makes callouts feel substantial without being heavy.
+
 ```javascript
 new Paragraph({
   style: "Callout",
+  shading: { fill: "FFF5F5", type: ShadingType.CLEAR }, // accent tint — adapt per tone
   children: [
     new TextRun({ text: "Key insight: ", font: BRAND.heading, size: 22, bold: true, color: BRAND.accent }),
     new TextRun({ text: "Your callout text here.", font: BRAND.body, size: 22, color: BRAND.dark })
@@ -192,6 +224,8 @@ new Paragraph({
 ```
 
 ### Branded Table
+
+Table data uses 9.5pt (size 19) for a tighter, more professional density — smaller than body text but still readable. Header labels use the heading font at 9pt.
 
 ```javascript
 function brandTable(headers, rows, contentWidth = 9360) {
@@ -210,7 +244,9 @@ function brandTable(headers, rows, contentWidth = 9360) {
           width: { size: colWidth, type: WidthType.DXA },
           shading: { fill: BRAND.dark, type: ShadingType.CLEAR },
           margins: { top: 80, bottom: 80, left: 160, right: 160 },
+          verticalAlign: VerticalAlign.CENTER,
           children: [new Paragraph({
+            spacing: { before: 0, after: 0 },
             children: [new TextRun({ text: h, font: BRAND.heading, size: 18, bold: true, color: "FFFFFF" })]
           })]
         }))
@@ -221,8 +257,10 @@ function brandTable(headers, rows, contentWidth = 9360) {
           width: { size: colWidth, type: WidthType.DXA },
           shading: { fill: i % 2 === 0 ? "FFFFFF" : BRAND.lightGray, type: ShadingType.CLEAR },
           margins: { top: 80, bottom: 80, left: 160, right: 160 },
+          verticalAlign: VerticalAlign.TOP,
           children: [new Paragraph({
-            children: [new TextRun({ text: String(cell), font: BRAND.body, size: 20, color: BRAND.dark })]
+            spacing: { before: 0, after: 0 },
+            children: [new TextRun({ text: String(cell), font: BRAND.body, size: 19, color: BRAND.dark })]
           })]
         }))
       }))

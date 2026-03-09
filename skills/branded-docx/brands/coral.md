@@ -12,7 +12,7 @@ const BRAND = {
   light:      "FAF9F5",   // page tone, subtle section backgrounds
   midGray:    "B0AEA5",   // captions, metadata, secondary text
   lightGray:  "E8E6DC",   // table zebra rows, subtle dividers
-  accent:     "D97757",   // primary accent — coral
+  accent:     "CC0000",   // primary accent — warm red (originally D97757 coral)
   secondary:  "6A9BCC",   // secondary accent — blue
   tertiary:   "788C5D",   // tertiary accent — green
   heading:    "Poppins",  // headings, labels, captions
@@ -59,7 +59,7 @@ const brandStyles = {
     },
     {
       id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 26, bold: true, color: BRAND.dark },
+      run: { font: BRAND.heading, size: 22, bold: true, color: BRAND.midGray },
       paragraph: { spacing: { before: 240, after: 80 }, outlineLevel: 2 }
     },
     {
@@ -104,6 +104,8 @@ numbering: {
 - **Accent is precious.** Use coral only for H1 headings, key callout labels, and accent bars. One or two coral elements per page maximum. If everything is coral, nothing is.
 - **One serif, one sans.** Georgia for reading, Poppins for structure. Never mix within a paragraph.
 - **Tables earn their place.** If it fits in prose, write prose. Tables for genuine comparisons only.
+- **Dense tables, airy prose.** Use 9.5pt Georgia (size 19) for table data cells — tighter than body text, giving tables a professional financial-document density. Body prose stays at 11pt.
+- **Tonal color.** The secondary (blue) and tertiary (green) accents are available for tonal meaning. Use tertiary for benefits or positive findings, secondary for neutral data highlights, accent for emphasis or caution. This is a creative judgment — adapt the palette to the document's emotional context.
 
 ---
 
@@ -115,20 +117,27 @@ numbering: {
 | Light | `FAF9F5` | Page tone, section backgrounds |
 | Mid Gray | `B0AEA5` | Captions, metadata, subdued text |
 | Light Gray | `E8E6DC` | Table zebra rows, subtle dividers |
-| **Accent** | `D97757` | H1 headings, callout labels, accent bars |
+| **Accent** | `CC0000` | H1 headings, callout labels, accent bars (originally `D97757` coral) |
+| Accent tint | `FFF5F5` | Faint warm background for emphasis callouts (originally `FFF5F0`) |
 | Secondary | `6A9BCC` | Secondary accents, data highlights |
 | Tertiary | `788C5D` | Tertiary accents, positive indicators |
+| Success tint | `F5F8F0` | Faint sage background for positive callouts |
 
 ## Typography Reference
 
 | Element | Font | Fallback | Size (pt) | docx units |
 |---------|------|----------|-----------|------------|
 | Cover title | Poppins Bold | Arial | 36 | 72 |
+| Cover category | Poppins Bold | Arial | 22 | 44 |
 | H1 | Poppins Bold | Arial | 26 | 52 |
 | H2 | Poppins Bold | Arial | 18 | 36 |
-| H3 | Poppins Bold | Arial | 13 | 26 |
+| H3 | Poppins Bold | Arial | 11 | 22 |
 | Body | Georgia | Times New Roman | 11 | 22 |
+| Table data | Georgia | Times New Roman | 9.5 | 19 |
+| Table header | Poppins Bold | Arial | 9 | 18 |
+| Label | Poppins | Arial | 8.5 | 17 |
 | Caption | Poppins | Arial | 9 | 18 |
+| Fine print | Georgia Italic | Times New Roman | 7.5 | 15 |
 | Footer | Poppins | Arial | 8 | 16 |
 
 ---

@@ -60,11 +60,11 @@ const DEFAULTS = {
   title: "Sales Representative",
   phone: "555-123-4567",
   email: "jane@example.com",
-  brokerage: "RE/MAX Example Realty Inc."
+  company: "RE/MAX Example Realty Inc."
 };
 ```
 
-User-provided values always override defaults. Brand-specific keys (like `brokerage`) are permitted beyond the base set.
+User-provided values always override defaults. Brand-specific keys (like `company`) are permitted beyond the base set.
 
 ### Font decision: Montserrat
 
