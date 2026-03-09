@@ -34,7 +34,7 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
-| [coral-docx](./skills/coral-docx/) | Generates Word documents styled with Anthropic's visual identity (Poppins headings, Georgia body, coral `#D97757` accents) | `branded report`, `professional Word doc`, `Anthropic style`, `make it look professional` |
+| [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with "coral" (Anthropic visual identity). Add brands by creating one `.md` file. | `branded report`, `coral docx`, `professional Word doc`, `make it look professional` |
 
 More skills will be added as the need arises.
 
@@ -45,18 +45,12 @@ More skills will be added as the need arises.
 ```
 claude-skills/
   skills/
-    coral-docx/                       # Skill: Anthropic-styled Word documents
-      SKILL.md                          # Instructions Claude reads at runtime
-      references/
-        brand-system.md                 # Full color, typography, and layout reference
-        setup-and-prerequisites.md      # Node.js, fonts, npm setup guide
-      scripts/
-        setup/
-          install-anthropic-fonts.ps1   # One-click Poppins installer for Windows
-      assets/
-        branded-sample.docx             # Preview the output before generating
+    branded-docx/                     # Skill: branded Word documents
+      SKILL.md                          # Brand-agnostic engine
+      brands/
+        coral.md                        # Anthropic visual identity theme
   releases/
-    coral-docx.skill                  # Ready-to-upload build (ZIP)
+    branded-docx.skill                # Ready-to-upload build (ZIP)
   scripts/
     build-skills.sh                     # Packages skills/ into releases/
   README.md
@@ -64,9 +58,7 @@ claude-skills/
 
 Each skill follows the same folder convention:
 - `SKILL.md` - what Claude reads at runtime (the brain)
-- `references/` - human-readable docs Claude consults when relevant
-- `scripts/setup/` - one-time setup automation (font installers, environment checks)
-- `assets/` - sample outputs and templates so you can preview before generating
+- `brands/` - pluggable theme files (one per brand identity)
 
 ---
 
@@ -77,15 +69,9 @@ Each skill follows the same folder convention:
 3. Click "Upload skill" and select the `.skill` file
 4. Done - the skill is active in all future conversations
 
-### First-time setup (coral-docx)
+### First-time setup (branded-docx)
 
-The coral-docx skill requires two fonts and Node.js. See [`setup-and-prerequisites.md`](./skills/coral-docx/references/setup-and-prerequisites.md) for full instructions, or run the Windows font installer directly:
-
-```
-skills/coral-docx/scripts/setup/install-anthropic-fonts.ps1
-```
-
-Right-click > Run with PowerShell. Takes about 30 seconds.
+The branded-docx skill requires Node.js and `npm install -g docx`. Each brand file lists its font requirements — the coral brand needs Poppins (download from [Google Fonts](https://fonts.google.com/specimen/Poppins)) and Georgia (built into Windows/macOS).
 
 ---
 

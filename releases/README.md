@@ -6,7 +6,7 @@ Download a ready-to-use `.skill` file and upload it to Claude.
 
 | Skill            | Download                                    | Description                       |
 |------------------|---------------------------------------------|-----------------------------------|
-| **coral-docx** | [coral-docx.skill](./coral-docx.skill)  | Anthropic-branded Word documents  |
+| **branded-docx** | [branded-docx.skill](./branded-docx.skill)  | Anthropic-branded Word documents  |
 
 ## Installation
 
@@ -25,7 +25,7 @@ cd claude-skills
 ./scripts/build-skills.sh
 
 # Or one specific skill
-./scripts/build-skills.sh coral-docx
+./scripts/build-skills.sh branded-docx
 ```
 
 Built files appear in `releases/`.

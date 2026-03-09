@@ -13,7 +13,7 @@ A personal library of portable `.skill` files for Claude.ai. Each skill is a ZIP
 ./scripts/build-skills.sh
 
 # Build a single skill by name
-./scripts/build-skills.sh coral-docx
+./scripts/build-skills.sh branded-docx
 ```
 
 The build script zips each skill folder that contains a `SKILL.md` and outputs `releases/<skill-name>.skill`.
@@ -31,11 +31,11 @@ Every skill under `skills/<skill-name>/` follows this structure:
 
 ## Current Skills
 
-- **coral-docx** — Generates `.docx` files styled with Anthropic's visual identity (Poppins headings, Georgia body, coral `#D97757` accents). Extends the base `docx` skill with a brand layer. Requires Poppins + Georgia fonts and Node.js with the `docx` npm package.
+- **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with a "coral" brand (Anthropic visual identity: Poppins headings, Georgia body, coral `#D97757` accents). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
 
 ## Key Architectural Notes
 
 - Skills are self-contained: each skill folder zips into a standalone `.skill` file with no cross-skill dependencies.
 - `SKILL.md` is the entry point Claude reads at runtime — its `description` field controls trigger-phrase matching.
-- The coral-docx skill layers on top of a separate base `docx` skill (not in this repo) for technical DOCX generation rules.
+- The branded-docx skill layers on top of a separate base `docx` skill (not in this repo) for technical DOCX generation rules. Brand themes live in `brands/*.md` — one file per brand.
 - `.skill` files in `releases/` are binary artifacts committed to git; they are built from source via `build-skills.sh`.

@@ -1,7 +1,7 @@
 ---
 title: "coral-docx skill rename and NODE_PATH fix for Claude Code"
 category: integration-issues
-component: coral-docx skill
+component: branded-docx skill (formerly coral-docx)
 symptoms:
   - "Skill name 'anthropic-styled-docx' rejected on upload"
   - "Cannot find module 'docx' in Claude Code (Git Bash)"
