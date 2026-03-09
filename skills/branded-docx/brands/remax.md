@@ -69,7 +69,7 @@ const brandStyles = {
   paragraphStyles: [
     {
       id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 52, bold: true, color: BRAND.accent },
+      run: { font: BRAND.heading, size: 52, bold: true, color: BRAND.accent, characterSpacing: 40 },
       paragraph: {
         spacing: { before: 480, after: 160 },
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BRAND.secondary, space: 6 } },
@@ -106,6 +106,7 @@ const brandStyles = {
 
 ### Brand-specific style notes
 
+- **Luxury letter spacing.** H1 uses `characterSpacing: 40` (2pt expanded) — the hallmark of premium real estate typography (think Rolex, Cartier, luxury property brochures). Cover title and cover category should also use `characterSpacing: 40`, and cover category should use `allCaps: true`.
 - H1 uses navy heading with a **red** bottom border (not accent) — the two-color interplay is core to RE/MAX identity
 - Callout blocks use red left border (secondary) to echo the "action bar" pattern from RE/MAX signage
 - H2 uses navy (accent) without a border — cleaner hierarchy
@@ -158,20 +159,20 @@ numbering: {
 
 ## Typography Reference
 
-| Element | Font | Fallback | Size (pt) | docx units |
-| ------- | ---- | -------- | --------- | ---------- |
-| Cover title | Montserrat Bold | Arial Bold | 36 | 72 |
-| Cover category | Montserrat Bold | Arial Bold | 22 | 44 |
-| H1 | Montserrat Bold | Arial Bold | 26 | 52 |
-| H2 | Montserrat Bold | Arial Bold | 18 | 36 |
-| H3 | Montserrat Bold | Arial Bold | 11 | 22 |
-| Body | Arial | Calibri | 11 | 22 |
-| Table data | Arial | Calibri | 9.5 | 19 |
-| Table header | Montserrat Bold | Arial Bold | 9 | 18 |
-| Label | Montserrat | Arial | 8.5 | 17 |
-| Caption | Montserrat | Arial | 9 | 18 |
-| Fine print | Arial Italic | Calibri | 7.5 | 15 |
-| Footer | Montserrat | Arial | 8 | 16 |
+| Element | Font | Fallback | Size (pt) | docx units | Special |
+| ------- | ---- | -------- | --------- | ---------- | ------- |
+| Cover title | Montserrat Bold | Arial Bold | 36 | 72 | +2pt spacing (`characterSpacing: 40`) |
+| Cover category | Montserrat Bold | Arial Bold | 22 | 44 | +2pt spacing, `allCaps: true` |
+| H1 | Montserrat Bold | Arial Bold | 26 | 52 | +2pt spacing (`characterSpacing: 40`) |
+| H2 | Montserrat Bold | Arial Bold | 18 | 36 | |
+| H3 | Montserrat Bold | Arial Bold | 11 | 22 | |
+| Body | Arial | Calibri | 11 | 22 | |
+| Table data | Arial | Calibri | 9.5 | 19 | |
+| Table header | Montserrat Bold | Arial Bold | 9 | 18 | |
+| Label | Montserrat | Arial | 8.5 | 17 | |
+| Caption | Montserrat | Arial | 9 | 18 | |
+| Fine print | Arial Italic | Calibri | 7.5 | 15 | |
+| Footer | Montserrat | Arial | 8 | 16 | |
 
 ---
 
@@ -273,6 +274,16 @@ All sizes are starting points — the user can resize the logo and adjust column
 
 ---
 
+## Print Tips
+
+For luxury printouts that match the digital warmth of this brand:
+
+- **Keep page background WHITE in Word.** Never set a cream page color — the printer will spray a fine toner dusting across every page, tripling cost and making paper feel wavy.
+- **Buy the color instead.** Use 28-32lb (105-120gsm) "Natural White" or "Cream" paper (e.g., Hammermill Premium, Mohawk Superfine). The physical paper provides the luxury warmth; the digital document stays clean.
+- **The combination:** White background in Word + cream heavyweight paper = the Bridge Blue and Bridge Red pop beautifully, and the document feels substantial in a client's hands.
+
+---
+
 ## Font Requirements
 
 This brand requires **Montserrat** (headings) and **Arial** (body).
@@ -285,3 +296,5 @@ Arial is built into Windows, macOS, and most Linux distributions. Montserrat is 
 - **Linux:** `sudo apt install fonts-montserrat` or download manually from Google Fonts.
 
 If Montserrat is missing, Word silently falls back to Arial. The document opens fine but headings lose their character. If you have a Gotham license, change the `heading` token back to `"Gotham"` for an exact brand match.
+
+**Alternative: Metropolis.** If you want an even closer Gotham match, [Metropolis](https://github.com/chrismsimpson/Metropolis) is a free open-source font with tighter letterforms. It's not on Google Fonts (so it won't work in Google Docs), but for Word-only workflows it's excellent. Install it the same way as Montserrat and change the `heading` token to `"Metropolis"`.
