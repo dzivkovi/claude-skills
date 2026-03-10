@@ -490,8 +490,12 @@ Revise your description field. Checklist:
 - Is it too generic?
 - Does it include trigger phrases users would actually say?
 - Does it mention relevant file types?
+- Does it cover **possessive/casual phrasing**? Users often say "my branding", "my style", "my template" instead of naming the skill or brand explicitly. Include these patterns in your description.
+- Does it cover **brand/theme name variations**? If your skill has named themes (e.g., `jasminahomes`, `coral`, `remax`), list them explicitly. Users may say "Jasmina brand", "JasminaHomes style", "jasminahomes look", or just "Jasmina" — all should trigger.
 
 Debug: Ask Claude *"When would you use the [skill name] skill?"* — Claude will quote the description back. Adjust based on what's missing.
+
+**Optimization workflow:** Use `/skill-creator "Optimize the description of my <skill-name> skill"` to run the automated description optimization loop. It generates 20 trigger/non-trigger eval queries, splits them 60/40 train/test, and iterates up to 5 times rewriting the description. Save the eval set to your workspace directory for future re-runs after model upgrades.
 
 ### Skill triggers too often
 

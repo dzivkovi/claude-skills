@@ -1,9 +1,9 @@
 ---
 name: branded-docx
-description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files. Use whenever the user wants a branded, professional Word document, report, brief, memo, or playbook. Triggers include: 'branded report', 'coral docx', 'coral report', 'remax report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', or any .docx request where visual quality matters. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
+description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files (coral, remax, jasminahomes). Use whenever the user wants a branded, professional Word document — reports, briefs, memos, playbooks, CMAs, listing presentations, market reports, or any .docx where visual quality matters. Triggers include: 'branded report', 'coral docx', 'remax report', 'jasminahomes style', 'Jasmina brand', 'Jasmina Homes', 'my branding', 'my brand', 'in my style', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block'. Also triggers when the user refers to a brand theme by name or asks for documents in 'my usual theme' or 'my usual brand'. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 metadata:
   author: Daniel Zivkovic
-  version: 2.2.0
+  version: 2.4.0
 ---
 
 # Branded DOCX - Pluggable Brand Themes
@@ -89,7 +89,7 @@ Generate the document from the user's description. Ask for content if none is gi
 
 ### Logo usage
 
-Logos are **off by default**. Only include a brand logo when the user explicitly asks for it (e.g., "add the logo", "include a signature block", "with branding"). Brand files may bundle a `*-logo.png` file alongside their `.md` — check the brand file's Logo section for the filename, recommended sizes, and placement guidance. If no logo file exists for the active brand, skip silently.
+Logos are **off by default** unless the brand file specifies otherwise. Only include a brand logo when the user explicitly asks for it (e.g., "add the logo", "include a signature block", "with branding") — **unless** the brand file sets `logoDefault: "on"`, in which case include the logo automatically and only omit it if the user explicitly asks (e.g., "no logo", "without logo", "skip the logo"). Brand files may bundle a `*-logo.png` file alongside their `.md` — check the brand file's Logo section for the filename, recommended sizes, and placement guidance. If no logo file exists for the active brand, skip silently.
 
 ### Default contact info
 

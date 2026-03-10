@@ -34,7 +34,15 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
-| [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with "coral" (Anthropic visual identity). Add brands by creating one `.md` file. | `branded report`, `coral docx`, `professional Word doc`, `make it look professional` |
+| [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with three brands (see below). Add new brands by creating one `.md` file. | `branded report`, `coral docx`, `jasminahomes style`, `my branding`, `professional Word doc` |
+
+### Available brands
+
+| Brand | File | Identity | Typography |
+|-------|------|----------|------------|
+| **Coral** | [coral.md](./skills/branded-docx/brands/coral.md) | Anthropic visual identity — warm red accent, off-white tone | Poppins + Georgia |
+| **RE/MAX** | [remax.md](./skills/branded-docx/brands/remax.md) | RE/MAX Bridge palette — deep navy, bridge red, warm neutrals | Metropolis + Arial |
+| **Jasmina Homes** | [jasminahomes.md](./skills/branded-docx/brands/jasminahomes.md) | PropTech Luxury hybrid — RE/MAX colors on Coral's dense, modern layout | Poppins + Georgia |
 
 More skills will be added as the need arises.
 
@@ -49,6 +57,9 @@ claude-skills/
       SKILL.md                          # Brand-agnostic engine
       brands/
         coral.md                        # Anthropic visual identity theme
+        remax.md                        # RE/MAX Bridge palette theme
+        jasminahomes.md                 # PropTech Luxury hybrid theme
+        remax-logo.png                  # RE/MAX logo (400x245px)
   releases/
     branded-docx.skill                # Ready-to-upload build (ZIP)
   scripts/
@@ -71,7 +82,13 @@ Each skill follows the same folder convention:
 
 ### First-time setup (branded-docx)
 
-The branded-docx skill requires Node.js and `npm install -g docx`. Each brand file lists its font requirements — the coral brand needs Poppins (download from [Google Fonts](https://fonts.google.com/specimen/Poppins)) and Georgia (built into Windows/macOS).
+The branded-docx skill requires Node.js and `npm install -g docx`. Each brand file lists its font requirements:
+
+| Brand | Fonts needed |
+|-------|-------------|
+| Coral | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
+| RE/MAX | Metropolis ([GitHub](https://github.com/chrismsimpson/Metropolis)) + Arial (built-in) |
+| Jasmina Homes | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
 
 ---
 

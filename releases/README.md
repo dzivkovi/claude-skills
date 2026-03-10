@@ -6,7 +6,7 @@ Download a ready-to-use `.skill` file and upload it to Claude.
 
 | Skill            | Download                                    | Description                       |
 |------------------|---------------------------------------------|-----------------------------------|
-| **branded-docx** | [branded-docx.skill](./branded-docx.skill)  | Anthropic-branded Word documents  |
+| **branded-docx** | [branded-docx.skill](./branded-docx.skill)  | Branded Word documents (Coral, RE/MAX, Jasmina Homes themes) |
 
 ## Installation
 

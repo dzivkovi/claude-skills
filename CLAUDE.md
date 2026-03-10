@@ -31,7 +31,7 @@ Every skill under `skills/<skill-name>/` follows this structure:
 
 ## Current Skills
 
-- **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with a "coral" brand (Anthropic visual identity: Poppins headings, Georgia body, coral `#D97757` accents). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
+- **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with three brands: **coral** (Anthropic visual identity: Poppins + Georgia, warm red accent), **remax** (RE/MAX Bridge palette: Metropolis + Arial, navy/red), and **jasminahomes** (PropTech Luxury hybrid: RE/MAX colors on Coral's dense layout, Poppins + Georgia). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
 
 ## Key Architectural Notes
 
