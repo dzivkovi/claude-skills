@@ -33,6 +33,18 @@ const DEFAULTS = {
 };
 ```
 
+### Cover Page Tokens
+
+```javascript
+const COVER = {
+  barColor: BRAND.accent,          // coral bar at top
+  categoryColor: BRAND.accent,     // coral category text
+  categorySpacing: 0,              // no extra spacing
+  categoryCaps: false,             // normal case
+  titleSpacing: 0,                 // no extra spacing
+};
+```
+
 ---
 
 ## brandStyles

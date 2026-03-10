@@ -1,6 +1,6 @@
 # REMAX — RE/MAX Real Estate Brand Identity
 
-RE/MAX brand system: red-white-blue color palette, bold sans-serif typography, navy accent, Montserrat headings, Arial body. Derived from the 2025 Brand Evolution: Brand Standards U.S. & Canada supplement.
+RE/MAX brand system: red-white-blue color palette, bold sans-serif typography, navy accent, Metropolis headings (Word) / Montserrat headings (Google Docs), Arial body. Derived from the 2025 Brand Evolution: Brand Standards U.S. & Canada supplement.
 
 ---
 
@@ -15,7 +15,7 @@ const BRAND = {
   accent:     "0C2749",   // bridge blue (deep navy) — primary accent
   secondary:  "AA1120",   // bridge red — secondary accent, action items
   tertiary:   "A3D4F2",   // sky blue — tertiary accent, soft highlights
-  heading:    "Montserrat", // headings, labels, captions (free Google Font)
+  heading:    "Metropolis", // headings, labels, captions (static TTF — Gotham match)
   body:       "Arial",    // body paragraphs, long-form text
 };
 ```
@@ -31,6 +31,18 @@ const DEFAULTS = {
   phone: "647-273-5318",
   email: "info@jasminahomes.ca",
   company: "RE/MAX Your Community Realty Inc."
+};
+```
+
+### Cover Page Tokens
+
+```javascript
+const COVER = {
+  barColor: BRAND.secondary,       // red bar at top (RE/MAX signage heritage)
+  categoryColor: BRAND.secondary,  // red category text
+  categorySpacing: 40,             // 2pt expanded — luxury letter spacing
+  categoryCaps: true,              // ALL CAPS category line
+  titleSpacing: 40,                // 2pt expanded on main title
 };
 ```
 
@@ -106,7 +118,7 @@ const brandStyles = {
 
 ### Brand-specific style notes
 
-- **Luxury letter spacing.** H1 uses `characterSpacing: 40` (2pt expanded) — the hallmark of premium real estate typography (think Rolex, Cartier, luxury property brochures). Cover title and cover category should also use `characterSpacing: 40`, and cover category should use `allCaps: true`.
+- **Luxury letter spacing.** H1 uses `characterSpacing: 40` (2pt expanded) — the hallmark of premium real estate typography (think Rolex, Cartier, luxury property brochures). Cover page typography is controlled by the `COVER` tokens above.
 - H1 uses navy heading with a **red** bottom border (not accent) — the two-color interplay is core to RE/MAX identity
 - Callout blocks use red left border (secondary) to echo the "action bar" pattern from RE/MAX signage
 - H2 uses navy (accent) without a border — cleaner hierarchy
@@ -161,18 +173,18 @@ numbering: {
 
 | Element | Font | Fallback | Size (pt) | docx units | Special |
 | ------- | ---- | -------- | --------- | ---------- | ------- |
-| Cover title | Montserrat Bold | Arial Bold | 36 | 72 | +2pt spacing (`characterSpacing: 40`) |
-| Cover category | Montserrat Bold | Arial Bold | 22 | 44 | +2pt spacing, `allCaps: true` |
-| H1 | Montserrat Bold | Arial Bold | 26 | 52 | +2pt spacing (`characterSpacing: 40`) |
-| H2 | Montserrat Bold | Arial Bold | 18 | 36 | |
-| H3 | Montserrat Bold | Arial Bold | 11 | 22 | |
+| Cover title | Metropolis Bold | Arial Bold | 36 | 72 | +2pt spacing (`characterSpacing: 40`) |
+| Cover category | Metropolis Bold | Arial Bold | 22 | 44 | +2pt spacing, `allCaps: true` |
+| H1 | Metropolis Bold | Arial Bold | 26 | 52 | +2pt spacing (`characterSpacing: 40`) |
+| H2 | Metropolis Bold | Arial Bold | 18 | 36 | |
+| H3 | Metropolis Bold | Arial Bold | 11 | 22 | |
 | Body | Arial | Calibri | 11 | 22 | |
 | Table data | Arial | Calibri | 9.5 | 19 | |
-| Table header | Montserrat Bold | Arial Bold | 9 | 18 | |
-| Label | Montserrat | Arial | 8.5 | 17 | |
-| Caption | Montserrat | Arial | 9 | 18 | |
+| Table header | Metropolis Bold | Arial Bold | 9 | 18 | |
+| Label | Metropolis | Arial | 8.5 | 17 | |
+| Caption | Metropolis | Arial | 9 | 18 | |
 | Fine print | Arial Italic | Calibri | 7.5 | 15 | |
-| Footer | Montserrat | Arial | 8 | 16 | |
+| Footer | Metropolis | Arial | 8 | 16 | |
 
 ---
 
@@ -286,15 +298,26 @@ For luxury printouts that match the digital warmth of this brand:
 
 ## Font Requirements
 
-This brand requires **Montserrat** (headings) and **Arial** (body).
+This brand requires **Metropolis** (headings, Word workflow) or **Montserrat** (headings, Google Docs workflow), and **Arial** (body).
 
-Arial is built into Windows, macOS, and most Linux distributions. Montserrat is a free Google Font that closely matches Gotham (the official RE/MAX typeface) and works across both MS Word and Google Docs:
+### Dual-Platform Rule
 
-- **Google Docs:** Already available in the font picker — just select "Montserrat".
-- **Windows:** Download from [Google Fonts](https://fonts.google.com/specimen/Montserrat), extract, select all .ttf files, right-click > "Install for all users". Restart Word.
-- **macOS:** Download from Google Fonts, unzip, double-click each .ttf, click "Install Font". Restart Word.
-- **Linux:** `sudo apt install fonts-montserrat` or download manually from Google Fonts.
+- **Word workflow:** Use **Metropolis** (static TTFs). Metropolis is a free open-source Gotham match with tighter letterforms than Montserrat. Because it's installed as static .ttf files (one per weight), it completely bypasses the MS Word variable font PDF export bug. PDFs embed Bold weight correctly every time.
+- **Google Docs workflow:** Use **Montserrat**. Google's cloud PDF engine handles variable fonts perfectly, and Montserrat is available in the Google Docs font picker. Google Docs cannot load local custom fonts like Metropolis.
 
-If Montserrat is missing, Word silently falls back to Arial. The document opens fine but headings lose their character. If you have a Gotham license, change the `heading` token back to `"Gotham"` for an exact brand match.
+The `heading` token defaults to `"Metropolis"` for Word workflows. To generate for Google Docs, change the token to `"Montserrat"`.
 
-**Alternative: Metropolis.** If you want an even closer Gotham match, [Metropolis](https://github.com/chrismsimpson/Metropolis) is a free open-source font with tighter letterforms. It's not on Google Fonts (so it won't work in Google Docs), but for Word-only workflows it's excellent. Install it the same way as Montserrat and change the `heading` token to `"Metropolis"`.
+### Installation
+
+**Metropolis** (Word — default):
+
+- Download from [GitHub](https://github.com/chrismsimpson/Metropolis), extract, install the static .ttf files (Regular, Bold, Italic, BoldItalic). Right-click > "Install for all users" on Windows. Restart Word.
+
+**Montserrat** (Google Docs):
+
+- Already available in the Google Docs font picker — just select "Montserrat".
+- For local preview in Word: download from [Google Fonts](https://fonts.google.com/specimen/Montserrat). Install ONLY the static .ttf files from the `static/` folder (Regular, Bold, Italic, BoldItalic) — do NOT install the variable font files, as they cause Word's PDF export to pick the wrong weight.
+
+**Arial** (body): Built into Windows, macOS, and most Linux distributions. No installation needed.
+
+If Metropolis is missing, Word silently falls back to Arial. The document opens fine but headings lose their distinctive character. If you have a Gotham license, change the `heading` token to `"Gotham"` for an exact brand match.

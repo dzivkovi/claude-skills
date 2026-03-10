@@ -3,7 +3,7 @@ name: branded-docx
 description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files. Use whenever the user wants a branded, professional Word document, report, brief, memo, or playbook. Triggers include: 'branded report', 'coral docx', 'coral report', 'remax report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', or any .docx request where visual quality matters. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 metadata:
   author: Daniel Zivkovic
-  version: 2.1.0
+  version: 2.2.0
 ---
 
 # Branded DOCX - Pluggable Brand Themes
@@ -16,7 +16,8 @@ This skill extends the base `docx` skill with pluggable brand themes. Follow all
 2. If the user names a brand matching a filename (e.g., "coral report" matches `brands/coral.md`), read that file.
 3. If only one brand file exists, use it without asking.
 4. If multiple brands exist and the request is ambiguous, list available brands and ask.
-5. Read the selected brand file. Use its `BRAND` tokens, `brandStyles`, and design principles for all document generation.
+5. Read the selected brand file. Use its `BRAND` tokens, `COVER` tokens, `brandStyles`, and design principles for all document generation.
+6. If the brand file does not define a `COVER` object, use defaults: `barColor: BRAND.accent`, `categoryColor: BRAND.accent`, `categorySpacing: 0`, `categoryCaps: false`, `titleSpacing: 0`.
 
 ---
 
@@ -168,12 +169,12 @@ The cover page supports an optional `category` parameter for a type-first readin
 function coverPage(title, subtitle, date, category) {
   return [
     new Paragraph({
-      border: { top: { style: BorderStyle.SINGLE, size: 48, color: BRAND.accent, space: 0 } },
+      border: { top: { style: BorderStyle.SINGLE, size: 48, color: COVER.barColor, space: 0 } },
       spacing: { before: 0, after: 3200 },
       children: []
     }),
     category ? new Paragraph({
-      children: [new TextRun({ text: category, font: BRAND.heading, size: 44, bold: true, color: BRAND.accent })],
+      children: [new TextRun({ text: category, font: BRAND.heading, size: 44, bold: true, color: COVER.categoryColor, characterSpacing: COVER.categorySpacing, allCaps: COVER.categoryCaps })],
       spacing: { before: 0, after: 200 }
     }) : null,
     subtitle ? new Paragraph({
@@ -181,7 +182,7 @@ function coverPage(title, subtitle, date, category) {
       spacing: { before: 0, after: 320 }
     }) : null,
     new Paragraph({
-      children: [new TextRun({ text: title, font: BRAND.heading, size: category ? 56 : 72, bold: true, color: BRAND.dark })],
+      children: [new TextRun({ text: title, font: BRAND.heading, size: category ? 56 : 72, bold: true, color: BRAND.dark, characterSpacing: COVER.titleSpacing })],
       spacing: { before: 0, after: 240 }
     }),
     new Paragraph({
