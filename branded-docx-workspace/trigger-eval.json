@@ -1,0 +1,82 @@
+[
+  {
+    "query": "Can you take this listing presentation I wrote and convert it into the JasminaHomes brand? I have the markdown ready, it's a CMA for 42 Thorncliffe Ave",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to make a market report for my client. Use the Jasmina brand please. The property is at 188 Broadview and I have the comps data in a spreadsheet",
+    "should_trigger": true
+  },
+  {
+    "query": "hey can you format this doc in my branding? its a seller's guide I typed up for a new listing appointment tomorrow",
+    "should_trigger": true
+  },
+  {
+    "query": "make a polished docx from this markdown using the remax brand style. It's a neighbourhood profile for Leslieville that I want to hand out at the open house",
+    "should_trigger": true
+  },
+  {
+    "query": "I wrote up a quarterly market update for my sphere of influence email. Can you turn it into a branded Word document? Use the jasminahomes style with the logo",
+    "should_trigger": true
+  },
+  {
+    "query": "convert this property brief to coral style please, it's for an internal presentation at our office meeting next Tuesday",
+    "should_trigger": true
+  },
+  {
+    "query": "I have a rough draft of a buyer consultation guide in markdown. Can you make it look professional as a Word doc? Use the Jasmina brand",
+    "should_trigger": true
+  },
+  {
+    "query": "take this CMA markdown and give me a .docx with the Jasmina Homes look. Add my signature block at the end with the RE/MAX logo",
+    "should_trigger": true
+  },
+  {
+    "query": "I need a styled report for 55 Danforth Road. Use the branded docx skill with jasminahomes. Include cover page, table of comparable sales, and my contact info in the footer",
+    "should_trigger": true
+  },
+  {
+    "query": "can you whip up a quick branded document? just a one-pager about why sellers should list with me. Use my usual brand theme",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to update the jasminahomes.md brand file to change the secondary color from red to a darker burgundy. Can you edit the brand config?",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you help me write a listing description for 42 Thorncliffe Ave? 3 bed, 2 bath, recently renovated kitchen, close to the subway",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to create a website for jasminahomes.ca using Next.js. Can you scaffold the project with a hero section and property listings page?",
+    "should_trigger": false
+  },
+  {
+    "query": "send an email to my client at john@gmail.com with the CMA attached. Subject line should be 'Your Home Valuation Report'",
+    "should_trigger": false
+  },
+  {
+    "query": "can you read the PDF of the MLS listing sheet I downloaded and pull out the key stats like price, square footage, and lot size?",
+    "should_trigger": false
+  },
+  {
+    "query": "I need to make a spreadsheet tracking my real estate transactions this year. Columns for address, list price, sale price, commission, close date",
+    "should_trigger": false
+  },
+  {
+    "query": "help me write a social media post for Instagram about a new listing at 200 King St. Keep it short and punchy with some emoji",
+    "should_trigger": false
+  },
+  {
+    "query": "can you convert this Word doc to PDF? I already have the formatted file, just need to export it",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to create a PowerPoint presentation about the Toronto housing market forecast for 2026. Use RE/MAX colors if possible",
+    "should_trigger": false
+  },
+  {
+    "query": "can you help me set up a Google Sheets template for tracking open house visitor sign-ins? I need name, email, phone, and agent columns",
+    "should_trigger": false
+  }
+]

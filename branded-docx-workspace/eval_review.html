@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Set Review - branded-docx</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Lora', Georgia, serif; background: #faf9f5; padding: 2rem; color: #141413; }
+    h1 { font-family: 'Poppins', sans-serif; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    .description { color: #b0aea5; margin-bottom: 1.5rem; font-style: italic; max-width: 900px; }
+    .controls { margin-bottom: 1rem; display: flex; gap: 0.5rem; }
+    .btn { font-family: 'Poppins', sans-serif; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+    .btn-add { background: #6a9bcc; color: white; }
+    .btn-add:hover { background: #5889b8; }
+    .btn-export { background: #d97757; color: white; }
+    .btn-export:hover { background: #c4613f; }
+    table { width: 100%; max-width: 1100px; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    th { font-family: 'Poppins', sans-serif; background: #141413; color: #faf9f5; padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #e8e6dc; vertical-align: top; }
+    tr:nth-child(even) td { background: #faf9f5; }
+    tr:hover td { background: #f3f1ea; }
+    .section-header td { background: #e8e6dc; font-family: 'Poppins', sans-serif; font-weight: 500; font-size: 0.8rem; color: #141413; text-transform: uppercase; letter-spacing: 0.05em; }
+    .query-input { width: 100%; padding: 0.4rem; border: 1px solid #e8e6dc; border-radius: 4px; font-size: 0.875rem; font-family: 'Lora', Georgia, serif; resize: vertical; min-height: 60px; }
+    .query-input:focus { outline: none; border-color: #d97757; box-shadow: 0 0 0 2px rgba(217,119,87,0.15); }
+    .toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider { position: absolute; inset: 0; background: #b0aea5; border-radius: 24px; cursor: pointer; transition: 0.2s; }
+    .toggle .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+    .toggle input:checked + .slider { background: #d97757; }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+    .btn-delete { background: #c44; color: white; padding: 0.3rem 0.6rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Poppins', sans-serif; }
+    .btn-delete:hover { background: #a33; }
+    .summary { margin-top: 1rem; color: #b0aea5; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <h1>Eval Set Review: <span id="skill-name">branded-docx</span></h1>
+  <p class="description">Current description: <span id="skill-desc">Creates Word (.docx) documents styled with a brand identity from pluggable theme files. Use whenever the user wants a branded, professional Word document, report, brief, memo, or playbook. Triggers include: 'branded report', 'coral docx', 'coral report', 'remax report', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', or any .docx request where visual quality matters. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt.</span></p>
+
+  <div class="controls">
+    <button class="btn btn-add" onclick="addRow()">+ Add Query</button>
+    <button class="btn btn-export" onclick="exportEvalSet()">Export Eval Set</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:65%">Query</th>
+        <th style="width:18%">Should Trigger</th>
+        <th style="width:10%">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="eval-body"></tbody>
+  </table>
+
+  <p class="summary" id="summary"></p>
+
+  <script>
+    const EVAL_DATA = [
+  {
+    "query": "Can you take this listing presentation I wrote and convert it into the JasminaHomes brand? I have the markdown ready, it's a CMA for 42 Thorncliffe Ave",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to make a market report for my client. Use the Jasmina brand please. The property is at 188 Broadview and I have the comps data in a spreadsheet",
+    "should_trigger": true
+  },
+  {
+    "query": "hey can you format this doc in my branding? its a seller's guide I typed up for a new listing appointment tomorrow",
+    "should_trigger": true
+  },
+  {
+    "query": "make a polished docx from this markdown using the remax brand style. It's a neighbourhood profile for Leslieville that I want to hand out at the open house",
+    "should_trigger": true
+  },
+  {
+    "query": "I wrote up a quarterly market update for my sphere of influence email. Can you turn it into a branded Word document? Use the jasminahomes style with the logo",
+    "should_trigger": true
+  },
+  {
+    "query": "convert this property brief to coral style please, it's for an internal presentation at our office meeting next Tuesday",
+    "should_trigger": true
+  },
+  {
+    "query": "I have a rough draft of a buyer consultation guide in markdown. Can you make it look professional as a Word doc? I want it in my brand colours (the navy and red ones)",
+    "should_trigger": true
+  },
+  {
+    "query": "take this CMA markdown and give me a .docx with the Jasmina Homes look \u2014 navy headings, red accents, the whole thing. Add my signature block at the end with the RE/MAX logo",
+    "should_trigger": true
+  },
+  {
+    "query": "I need a styled report for 55 Danforth Road. Use the branded docx skill with jasminahomes. Include cover page, table of comparable sales, and my contact info in the footer",
+    "should_trigger": true
+  },
+  {
+    "query": "can you whip up a quick branded document? just a one-pager about why sellers should list with me. Use my usual brand theme",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to update the jasminahomes.md brand file to change the secondary color from red to a darker burgundy. Can you edit the brand config?",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you help me write a listing description for 42 Thorncliffe Ave? 3 bed, 2 bath, recently renovated kitchen, close to the subway",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to create a website for jasminahomes.ca using Next.js. Can you scaffold the project with a hero section and property listings page?",
+    "should_trigger": false
+  },
+  {
+    "query": "send an email to my client at john@gmail.com with the CMA attached. Subject line should be 'Your Home Valuation Report'",
+    "should_trigger": false
+  },
+  {
+    "query": "can you read the PDF of the MLS listing sheet I downloaded and pull out the key stats like price, square footage, and lot size?",
+    "should_trigger": false
+  },
+  {
+    "query": "I need to make a spreadsheet tracking my real estate transactions this year. Columns for address, list price, sale price, commission, close date",
+    "should_trigger": false
+  },
+  {
+    "query": "help me write a social media post for Instagram about a new listing at 200 King St. Keep it short and punchy with some emoji",
+    "should_trigger": false
+  },
+  {
+    "query": "can you convert this Word doc to PDF? I already have the formatted file, just need to export it",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to create a PowerPoint presentation about the Toronto housing market forecast for 2026. Use RE/MAX colors if possible",
+    "should_trigger": false
+  },
+  {
+    "query": "can you help me set up a Google Sheets template for tracking open house visitor sign-ins? I need name, email, phone, and agent columns",
+    "should_trigger": false
+  }
+];
+
+    let evalItems = [...EVAL_DATA];
+
+    function render() {
+      const tbody = document.getElementById('eval-body');
+      tbody.textContent = '';
+
+      const sorted = evalItems
+        .map((item, origIdx) => ({ ...item, origIdx }))
+        .sort((a, b) => (b.should_trigger ? 1 : 0) - (a.should_trigger ? 1 : 0));
+
+      let lastGroup = null;
+      sorted.forEach(item => {
+        const group = item.should_trigger ? 'trigger' : 'no-trigger';
+        if (group !== lastGroup) {
+          const headerRow = document.createElement('tr');
+          headerRow.className = 'section-header';
+          const headerCell = document.createElement('td');
+          headerCell.setAttribute('colspan', '3');
+          headerCell.textContent = item.should_trigger ? 'Should Trigger' : 'Should NOT Trigger';
+          headerRow.appendChild(headerCell);
+          tbody.appendChild(headerRow);
+          lastGroup = group;
+        }
+
+        const idx = item.origIdx;
+        const tr = document.createElement('tr');
+
+        const tdQuery = document.createElement('td');
+        const textarea = document.createElement('textarea');
+        textarea.className = 'query-input';
+        textarea.value = item.query;
+        textarea.addEventListener('change', function() { updateQuery(idx, this.value); });
+        tdQuery.appendChild(textarea);
+
+        const tdToggle = document.createElement('td');
+        const label = document.createElement('label');
+        label.className = 'toggle';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = item.should_trigger;
+        checkbox.addEventListener('change', function() { updateTrigger(idx, this.checked); });
+        const slider = document.createElement('span');
+        slider.className = 'slider';
+        label.appendChild(checkbox);
+        label.appendChild(slider);
+        tdToggle.appendChild(label);
+        const statusSpan = document.createElement('span');
+        statusSpan.style.cssText = 'margin-left:8px;font-size:0.8rem;color:#b0aea5';
+        statusSpan.textContent = item.should_trigger ? 'Yes' : 'No';
+        tdToggle.appendChild(statusSpan);
+
+        const tdActions = document.createElement('td');
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', function() { deleteRow(idx); });
+        tdActions.appendChild(deleteBtn);
+
+        tr.appendChild(tdQuery);
+        tr.appendChild(tdToggle);
+        tr.appendChild(tdActions);
+        tbody.appendChild(tr);
+      });
+      updateSummary();
+    }
+
+    function updateQuery(idx, value) { evalItems[idx].query = value; updateSummary(); }
+    function updateTrigger(idx, value) { evalItems[idx].should_trigger = value; render(); }
+    function deleteRow(idx) { evalItems.splice(idx, 1); render(); }
+
+    function addRow() {
+      evalItems.push({ query: '', should_trigger: true });
+      render();
+      const inputs = document.querySelectorAll('.query-input');
+      inputs[inputs.length - 1].focus();
+    }
+
+    function updateSummary() {
+      const trigger = evalItems.filter(i => i.should_trigger).length;
+      const noTrigger = evalItems.filter(i => !i.should_trigger).length;
+      document.getElementById('summary').textContent =
+        evalItems.length + ' queries total: ' + trigger + ' should trigger, ' + noTrigger + ' should not trigger';
+    }
+
+    function exportEvalSet() {
+      const valid = evalItems.filter(i => i.query.trim() !== '');
+      const data = valid.map(i => ({ query: i.query.trim(), should_trigger: i.should_trigger }));
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'eval_set.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    render();
+  </script>
+</body>
+</html>
