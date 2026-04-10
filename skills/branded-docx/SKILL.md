@@ -1,9 +1,9 @@
 ---
 name: branded-docx
-description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files (coral, remax, jasminahomes). Use whenever the user wants a branded, professional Word document — reports, briefs, memos, playbooks, CMAs, listing presentations, market reports, or any .docx where visual quality matters. Triggers include: 'branded report', 'coral docx', 'remax report', 'jasminahomes style', 'Jasmina brand', 'Jasmina Homes', 'my branding', 'my brand', 'in my style', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block'. Also triggers when the user refers to a brand theme by name or asks for documents in 'my usual theme' or 'my usual brand'. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
+description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files (coral, remax, jasminahomes, accessible). Use whenever the user wants a branded, professional Word document - reports, briefs, memos, playbooks, CMAs, listing presentations, market reports, or any .docx where visual quality matters. Triggers include: 'branded report', 'coral docx', 'remax report', 'jasminahomes style', 'Jasmina brand', 'Jasmina Homes', 'my branding', 'my brand', 'in my style', 'professional Word doc', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', 'accessible', 'accessible theme', 'large print', 'big font', 'for my father', 'for someone who doesn't see well', 'elder reader', 'low vision', 'visually impaired'. Also triggers when the user refers to a brand theme by name or asks for documents in 'my usual theme' or 'my usual brand'. Reads brand files from brands/ to apply the correct theme. Logos and signature blocks are optional and off by default. All base DOCX technical rules still apply - read them from the docx skill if in doubt."
 metadata:
   author: Daniel Zivkovic
-  version: 2.4.0
+  version: 2.5.0
 ---
 
 # Branded DOCX - Pluggable Brand Themes
@@ -62,7 +62,7 @@ When the user provides markdown, apply these mappings automatically:
 
 If the markdown begins with a `#` title, treat the document as having a cover page. Extract:
 - Category: if the title names a document type (e.g., "Market Value Analysis", "Comparative Market Analysis", "Project Brief"), use it as the category line in accent
-- Title: the main subject — often a property address, project name, or entity. If a category was extracted, look for the subject in the subtitle or first few lines
+- Title: the main subject - often a property address, project name, or entity. If a category was extracted, look for the subject in the subtitle or first few lines
 - Subtitle: first blockquote or italicised line after the title
 - Date: any date pattern (e.g. "March 2026", "2026-03-06") in the first 10 lines
 
@@ -70,18 +70,18 @@ If no cover page signals are found, start with H1 directly.
 
 ### Tonal adaptation
 
-The brand file provides a design vocabulary — not rigid rules. Adapt the palette to the document's emotional context:
+The brand file provides a design vocabulary - not rigid rules. Adapt the palette to the document's emotional context:
 
 - Use **accent tint backgrounds** on callout blocks for emphasis or caution
 - Use **success tint backgrounds** (from the brand's tertiary color) for positive findings or benefits
 - Use the **secondary color** for neutral data highlights or informational elements
-- For data-heavy documents (financial reports, CMAs, analyses), use the **table data size** (9.5pt) from the brand's Typography Reference — this gives tables professional density without sacrificing readability
+- For data-heavy documents (financial reports, CMAs, analyses), use the **table data size** (9.5pt) from the brand's Typography Reference - this gives tables professional density without sacrificing readability
 
 The brand file defines the palette; you decide when each color serves the content best.
 
 ### Text fidelity
 
-When converting user-provided markdown, preserve the exact wording. Do not paraphrase, summarize, reorder sections, or add/remove content. Styling, color, and layout decisions are yours — the text is the user's.
+When converting user-provided markdown, preserve the exact wording. Do not paraphrase, summarize, reorder sections, or add/remove content. Styling, color, and layout decisions are yours - the text is the user's.
 
 ### When no markdown is provided
 
@@ -89,7 +89,7 @@ Generate the document from the user's description. Ask for content if none is gi
 
 ### Logo usage
 
-Logos are **off by default** unless the brand file specifies otherwise. Only include a brand logo when the user explicitly asks for it (e.g., "add the logo", "include a signature block", "with branding") — **unless** the brand file sets `logoDefault: "on"`, in which case include the logo automatically and only omit it if the user explicitly asks (e.g., "no logo", "without logo", "skip the logo"). Brand files may bundle a `*-logo.png` file alongside their `.md` — check the brand file's Logo section for the filename, recommended sizes, and placement guidance. If no logo file exists for the active brand, skip silently.
+Logos are **off by default** unless the brand file specifies otherwise. Only include a brand logo when the user explicitly asks for it (e.g., "add the logo", "include a signature block", "with branding") - **unless** the brand file sets `logoDefault: "on"`, in which case include the logo automatically and only omit it if the user explicitly asks (e.g., "no logo", "without logo", "skip the logo"). Brand files may bundle a `*-logo.png` file alongside their `.md` - check the brand file's Logo section for the filename, recommended sizes, and placement guidance. If no logo file exists for the active brand, skip silently.
 
 ### Default contact info
 
@@ -163,7 +163,7 @@ function brandFooter() {
 
 ### Cover Page
 
-The cover page supports an optional `category` parameter for a type-first reading order — the document type appears first in accent (e.g., "MARKET VALUE ANALYSIS"), then the subject in large dark text. If no category is provided, the title displays at full size as before.
+The cover page supports an optional `category` parameter for a type-first reading order - the document type appears first in accent (e.g., "MARKET VALUE ANALYSIS"), then the subject in large dark text. If no category is provided, the title displays at full size as before.
 
 ```javascript
 function coverPage(title, subtitle, date, category) {
@@ -216,7 +216,7 @@ Add a faint tinted background to callout blocks for visual weight. Use the accen
 ```javascript
 new Paragraph({
   style: "Callout",
-  shading: { fill: "FFF5F5", type: ShadingType.CLEAR }, // accent tint — adapt per tone
+  shading: { fill: "FFF5F5", type: ShadingType.CLEAR }, // accent tint - adapt per tone
   children: [
     new TextRun({ text: "Key insight: ", font: BRAND.heading, size: 22, bold: true, color: BRAND.accent }),
     new TextRun({ text: "Your callout text here.", font: BRAND.body, size: 22, color: BRAND.dark })
@@ -226,7 +226,7 @@ new Paragraph({
 
 ### Branded Table
 
-Table data uses 9.5pt (size 19) for a tighter, more professional density — smaller than body text but still readable. Header labels use the heading font at 9pt.
+Table data uses 9.5pt (size 19) for a tighter, more professional density - smaller than body text but still readable. Header labels use the heading font at 9pt.
 
 ```javascript
 function brandTable(headers, rows, contentWidth = 9360) {
@@ -278,4 +278,4 @@ function brandTable(headers, rows, contentWidth = 9360) {
 2. `npm install -g docx`
 3. Check your brand file for required fonts
 
-All base DOCX technical rules apply — read the `docx` skill for details on lists, images, hyperlinks, page breaks, and XML editing.
+All base DOCX technical rules apply - read the `docx` skill for details on lists, images, hyperlinks, page breaks, and XML editing.
