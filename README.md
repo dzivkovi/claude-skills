@@ -43,7 +43,7 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 | **Coral** | [coral.md](./skills/branded-docx/brands/coral.md) | Anthropic visual identity - warm red accent, off-white tone | Poppins + Georgia | Client reports, tech briefs, polished deliverables |
 | **RE/MAX** | [remax.md](./skills/branded-docx/brands/remax.md) | RE/MAX Bridge palette - deep navy, bridge red, warm neutrals | Metropolis + Arial | Real estate branded documents |
 | **Jasmina Homes** | [jasminahomes.md](./skills/branded-docx/brands/jasminahomes.md) | PropTech Luxury hybrid - RE/MAX colors on Coral's dense, modern layout | Poppins + Georgia | Real estate documents with tech-forward feel |
-| **Accessible** | [accessible.md](./skills/branded-docx/brands/accessible.md) | Large print for low-vision readers - 14pt body, no logo, content-first cover | Poppins + Georgia | Printed documents for elderly or visually impaired readers |
+| **Accessible** | [accessible.md](./skills/branded-docx/brands/accessible.md) | High-readability theme for glasses wearers - WCAG-grounded contrast, deep blue accent that prints crisp, brand-neutral | Arial + Verdana (both built-in) | Printed documents for adult readers with reading glasses (presbyopia) - not a low-vision theme |
 
 More skills will be added as the need arises.
 
@@ -60,7 +60,7 @@ claude-skills/
         coral.md                        # Anthropic visual identity theme
         remax.md                        # RE/MAX Bridge palette theme
         jasminahomes.md                 # PropTech Luxury hybrid theme
-        accessible.md                   # Large print theme for low-vision readers
+        accessible.md                   # High-readability theme for glasses wearers
         coral-logo.png                  # Coral logo
         remax-logo.png                  # RE/MAX logo (400x245px)
   releases/
@@ -92,7 +92,7 @@ The branded-docx skill requires Node.js and `npm install -g docx`. Each brand fi
 | Coral | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
 | RE/MAX | Metropolis ([GitHub](https://github.com/chrismsimpson/Metropolis)) + Arial (built-in) |
 | Jasmina Homes | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
-| Accessible | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
+| Accessible | Arial (built-in) + Verdana (built-in) - no install required |
 
 ---
 

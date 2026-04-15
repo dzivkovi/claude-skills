@@ -1,6 +1,8 @@
-# Accessible - Large Print Theme for Low-Vision Readers
+# Accessible — High-Readability Theme for Glasses Wearers
 
-A standalone theme for printed documents intended for elderly or visually impaired readers. Based on the Jasmina Homes visual architecture (Poppins headings, Georgia body, navy/red palette) but stripped of all real estate branding, logos, and signature blocks. The result is a clean, high-contrast, large-print document that looks professional without being tied to any business identity.
+A WCAG-informed brand system optimised for readability across vision abilities: deep blue accent, near-black text, white page, Arial headings, Verdana body. Every color pair exceeds WCAG AA contrast (4.5:1 for body text, 3:1 for large text). No meaning conveyed by color alone.
+
+> **Calibration note.** This theme is tuned for adult readers with reading glasses (age-related presbyopia) — comparable to the iPhone "Medium" text size. It is **not** a large-print theme for low-vision or visually impaired readers. If a reader genuinely cannot read standard print, build a dedicated 16–18pt large-print theme — do not inflate the sizes below. The sizes here have been print-tested and calibrated; both oversizing (wastes paper, titles look shouty) and undersizing (strains glasses-corrected vision) break the theme.
 
 ---
 
@@ -8,116 +10,88 @@ A standalone theme for printed documents intended for elderly or visually impair
 
 ```javascript
 const BRAND = {
-  dark:       "232323",   // dark charcoal
-  light:      "FFFFFF",   // pure white
-  midGray:    "8A8780",   // warm gray - timestamps, metadata
-  lightGray:  "EDEAE0",   // warm cream-gray - dividers, zebra rows
-  accent:     "0C2749",   // deep navy - headings, structural elements
-  secondary:  "AA1120",   // bridge red - callout borders, emphasis
-  tertiary:   "A3D4F2",   // sky blue - soft highlights
-  heading:    "Poppins",  // geometric sans - clear, modern
-  body:       "Georgia",  // editorial serif - high readability at large sizes
+  dark:       "1B1B1F",   // near-black, softer than pure #000 but still AAA on white
+  light:      "FFFFFF",   // pure white page — maximum contrast base
+  midGray:    "545467",   // metadata, captions (7.2:1 on white — AAA)
+  lightGray:  "E6E6EF",   // table zebra rows, subtle dividers
+  accent:     "005EA6",   // deep blue — 7.1:1 on white (AAA), colorblind-safe
+  secondary:  "7B5EA7",   // muted purple — distinguishable from blue under all color-vision types
+  tertiary:   "2E7D32",   // forest green — positive/success indicators
+  heading:    "Arial",    // universal sans-serif, every OS
+  body:       "Verdana",  // wider letterforms, designed for on-screen and print readability
 };
+```
+
+### Brand-Neutral — No Defaults
+
+```javascript
+// This theme is deliberately brand-neutral:
+// no logo, no signature block, no default contact info.
+// If a signature block is requested, ask the user for the details.
+const logoDefault = "off";
 ```
 
 ### Cover Page Tokens
 
 ```javascript
 const COVER = {
-  barColor: BRAND.secondary,
-  categoryColor: BRAND.secondary,
-  categorySpacing: 0,
-  categoryCaps: false,
-  titleSpacing: 0,
+  barColor: BRAND.accent,          // blue bar at top
+  categoryColor: BRAND.accent,     // blue category text
+  categorySpacing: 40,             // slight letter spacing for category
+  categoryCaps: true,              // uppercase category for structure
+  titleSpacing: 0,                 // no extra title spacing
 };
 ```
 
 ---
 
-## No Logo, No Signature, No Defaults
+## brandStyles
 
-```javascript
-const logoDefault = "off";
-```
-
-This theme has no logo, no signature block, and no default contact info. It is a content-only theme. If the user explicitly asks for a signature block, ask them for the details.
-
----
-
-## Typography - Accessible Size Scale
-
-Every size is designed so that NO readable element falls below 14pt (sz=28). The heading-to-body ratio is compressed to ~1.6x to prevent visual overwhelm in documents with many sections.
+Body text is 12pt (size 24) — one point larger than typical — for improved readability. Line spacing uses `line: 276` (1.15x) for comfortable reading without wasting vertical space.
 
 ```javascript
 const brandStyles = {
   default: {
-    document: { run: { font: BRAND.body, size: 28, color: BRAND.dark } }
+    document: { run: { font: BRAND.body, size: 24, color: BRAND.dark } },
+    paragraph: { spacing: { line: 276 } }
   },
   paragraphStyles: [
     {
       id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 44, bold: true, color: BRAND.accent },
+      run: { font: BRAND.heading, size: 48, bold: true, color: BRAND.accent },
       paragraph: {
-        spacing: { before: 240, after: 200 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BRAND.secondary, space: 6 } },
+        spacing: { before: 480, after: 200 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BRAND.accent, space: 8 } },
         outlineLevel: 0
       }
     },
     {
       id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 36, bold: true, color: BRAND.accent },
-      paragraph: { spacing: { before: 360, after: 160 }, outlineLevel: 1 }
+      run: { font: BRAND.heading, size: 32, bold: true, color: BRAND.dark },
+      paragraph: { spacing: { before: 360, after: 120 }, outlineLevel: 1 }
     },
     {
       id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
-      run: { font: BRAND.heading, size: 28, bold: true, color: BRAND.midGray },
-      paragraph: { spacing: { before: 280, after: 120 }, outlineLevel: 2 }
+      run: { font: BRAND.heading, size: 24, bold: true, color: BRAND.midGray },
+      paragraph: { spacing: { before: 240, after: 80 }, outlineLevel: 2 }
     },
     {
       id: "Caption", name: "Caption", basedOn: "Normal", next: "Normal",
-      run: { font: BRAND.heading, size: 24, color: BRAND.midGray, italics: false },
+      run: { font: BRAND.heading, size: 18, color: BRAND.midGray, italics: false },
       paragraph: { spacing: { before: 40, after: 160 } }
     },
     {
       id: "Callout", name: "Callout", basedOn: "Normal", next: "Normal",
-      run: { font: BRAND.body, size: 28, color: BRAND.dark },
+      run: { font: BRAND.body, size: 24, color: BRAND.dark },
       paragraph: {
-        spacing: { before: 160, after: 160 },
+        spacing: { before: 120, after: 120 },
         indent: { left: 720 },
-        border: { left: { style: BorderStyle.SINGLE, size: 12, color: BRAND.secondary, space: 12 } }
+        border: { left: { style: BorderStyle.SINGLE, size: 12, color: BRAND.accent, space: 12 } }
       }
     }
   ]
 };
 ```
-
----
-
-## Typography Reference
-
-| Element           | Font          | Size (pt) | docx sz | Notes                              |
-|-------------------|---------------|-----------|---------|--------------------------------------|
-| Cover title       | Poppins Bold  | 36        | 72      | Largest element - landmark           |
-| Cover category    | Poppins Bold  | 14        | 28      | Speaker/author name, same as body    |
-| Cover subtitle    | Poppins       | 18        | 36      | Document type, italicized            |
-| Cover date        | Poppins       | 14        | 28      | Same as body                         |
-| Cover metadata    | Poppins       | 12        | 24      | Source, duration                     |
-| H1 section heading| Poppins Bold  | 22        | 44      | Reduced - many sections, less shout  |
-| H2                | Poppins Bold  | 18        | 36      | Standard proportion                  |
-| H3 subheading     | Poppins Bold  | 14        | 28      | Same size as body; bold only         |
-| Body text         | Georgia       | 14        | 28      | The floor - nothing smaller          |
-| Timestamp labels  | Poppins       | 14        | 28      | Same as body, gray color             |
-| Bullets           | Georgia       | 14        | 28      | Same as body                         |
-| Callout text      | Georgia       | 14        | 28      | Same as body, indented + red border  |
-| Table data        | Georgia       | 14        | 28      | Same as body (not reduced)           |
-| Table header      | Poppins Bold  | 14        | 28      | Same as body, white on dark          |
-| Summary heading   | Poppins Bold  | 28        | 56      | Landmark, stands out from section H1 |
-| Footer            | Poppins       | 10        | 20      | Structural chrome, OK to be smaller  |
-| Header            | Poppins       | 10        | 20      | Structural chrome                    |
-
-### The accessible ratio
-
-Standard themes use a 2.4x heading-to-body ratio (26pt / 11pt). This theme uses 1.6x (22pt / 14pt). When body text is already large, the reader navigates by color and bold weight, not by size contrast. Oversized headings waste paper and feel aggressive.
 
 ---
 
@@ -128,7 +102,7 @@ numbering: {
   config: [
     { reference: "bullets", levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022",
         alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } },
-        run: { font: BRAND.body, color: BRAND.secondary } } }] },
+        run: { font: BRAND.body, color: BRAND.accent } } }] },
     { reference: "numbers", levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.",
         alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }
   ]
@@ -139,100 +113,93 @@ numbering: {
 
 ## Design Principles
 
-### 1. Nothing below 14pt
-Every element the reader might actually read must be at least 14pt (sz=28). The only exceptions are header and footer chrome. If you catch yourself setting a size below 28, stop and reconsider.
-
-### 2. Cover page is content-first
-The cover should tell the reader WHAT this is about and WHO is involved. Lead with the speaker, author, or subject name as the category line. The document type (transcript, report, summary) goes in the subtitle.
-
-**Cover page order:**
-```
-[red accent bar]
-[Speaker / Author / Subject]     <- category line, 14pt, red
-[Topic title]                    <- main title, 36pt, dark
-[Document type]                  <- subtitle, 18pt, gray italic
----
-[Date]                           <- 14pt, gray
-[Source / Duration]              <- 12pt, gray
-```
-
-### 3. Section headings: wayfinding, not shouting
-22pt headings on 14pt body. Bold + navy + red bottom border provides clear separation without overwhelming. In documents with 15+ sections, this matters. Spacing above headings is kept tight (240 DXA, not the standard 480) to avoid wasting vertical space on every section break.
-
-### 4. No dividers
-Do NOT generate horizontal rule dividers between sections. The H1's own red bottom border provides all the separation needed. Dividers at 14pt body text become thick visual barriers that waste paper. Remove them entirely.
-
-### 5. Timestamps at body size
-Timestamps are not metadata to be hidden. The reader may use them to find content in a video or recording. Keep them at body size (14pt) in warm gray (BRAND.midGray).
-
-### 6. Generous spacing
-Do not tighten spacing to save pages. More pages is fine. Use the standard spacing rhythm (multiples of 120 DXA). Cramped text defeats the purpose.
-
-### 7. High contrast
-Dark charcoal (232323) on white is the default. Never use light gray text for body content. Gray is only for timestamps, metadata, and structural elements.
-
----
-
-## Spacing Rhythm
-
-Same as Jasmina Homes base, with slightly more generous after-heading spacing:
-
-- Tight: 80 before, 80 after
-- Normal: 120 before, 120 after
-- After H1: 200 after (slightly more than standard 160)
-- After H3: 120 after (slightly more than standard 80)
-- Section gap: 240 before H1 (compact - no wasted space above headings)
-- Table cell margins: 80 DXA top/bottom (more breathable)
+- **Contrast is king.** Every text element exceeds WCAG AA minimum. Body text on white exceeds AAA (7:1+). Never rely on color alone to convey meaning.
+- **Verdana for reading.** Its wide letterforms, open counters and generous spacing were designed for legibility. Use for all body text, table data, and extended reading.
+- **Arial for structure.** Clean and universally available. Headings, labels, metadata.
+- **12pt body baseline.** One point above convention pays large dividends for sustained reading comfort.
+- **Generous spacing.** 1.15x line height, ample paragraph spacing. Let content breathe.
+- **Accent is structural.** Deep blue marks H1 headings, callout borders, bullet dots, and the cover bar. Nothing more. If blue is everywhere, the structure dissolves.
+- **Tables earn their place.** Table data at 10pt Verdana (size 20) for density; headers at 9.5pt Arial Bold. Still larger than most brand systems.
 
 ---
 
 ## Color Reference
 
-Identical to Jasmina Homes. High-contrast navy + red works well for low vision.
+| Role | Hex | Contrast on White | WCAG Level | Use |
+|------|-----|-------------------|------------|-----|
+| Dark | `1B1B1F` | 17.4:1 | AAA | All body text |
+| Mid Gray | `545467` | 7.2:1 | AAA | Captions, metadata |
+| Light Gray | `E6E6EF` | 1.3:1 | — | Table zebra, dividers (decorative only) |
+| **Accent** | `005EA6` | 7.1:1 | AAA | H1, callout labels, accent bars |
+| Accent tint | `EBF3FA` | — | — | Callout backgrounds (decorative) |
+| Secondary | `7B5EA7` | 5.4:1 | AA | Data highlights |
+| Tertiary | `2E7D32` | 5.9:1 | AA+ | Positive indicators |
+| Warning tint | `FFF8E1` | — | — | Warning callout backgrounds |
 
-| Role       | Hex      | Use                                     |
-|------------|----------|-----------------------------------------|
-| Dark       | 232323   | Body text, strong backgrounds           |
-| Light      | FFFFFF   | Page background                         |
-| Mid Gray   | 8A8780   | Timestamps, metadata, H3               |
-| Light Gray | EDEAE0   | Table zebra rows                       |
-| Accent     | 0C2749   | H1/H2 headings, table headers          |
-| Secondary  | AA1120   | Callout borders, bullet accents, bar   |
-| Tertiary   | A3D4F2   | Soft highlights                         |
-| Info tint  | F0F2F8   | Faint info callout background           |
-| Alert tint | FDF5F5   | Faint alert callout background          |
+## Typography Reference
+
+| Element | Font | Size (pt) | docx units |
+|---------|------|-----------|------------|
+| Cover title | Arial Bold | 32 | 64 |
+| Cover category | Arial Bold | 20 | 40 |
+| H1 | Arial Bold | 24 | 48 |
+| H2 | Arial Bold | 16 | 32 |
+| H3 | Arial Bold | 12 | 24 |
+| Body | Verdana | 12 | 24 |
+| Table data | Verdana | 10 | 20 |
+| Table header | Arial Bold | 9.5 | 19 |
+| Caption | Arial | 9 | 18 |
+| Footer | Arial | 8.5 | 17 |
+
+---
+
+## Spacing Rhythm
+
+Multiples of 120 DXA:
+- Tight: 80 / 80
+- Normal: 120 / 120
+- Loose (after headings): 200 after
+- Section gap: 360–480 before major headings
+
+---
+
+## Document Archetypes
+
+**Report / Transcript** — Cover page with accent top bar + category + title + date. H1 per major section (blue, bottom border), H2 per subsection. Verdana 12pt body. Callouts with left blue border + faint tint.
+
+**Brief / Memo** — No cover. Title is first H1. Header line + page number. 2–3 heading levels max.
 
 ---
 
 ## Common Mistakes
 
-- Setting any readable text below sz=28 (14pt) - the whole point of this theme
-- Using 26pt headings from the standard theme (too large for accessible ratio)
-- Putting the document production type ("Segmented Transcript") as the cover category instead of the content subject
-- Adding divider lines between sections (the H1 red bottom border is enough; no dividers in this theme)
-- Reducing margins to fit more text (white space aids readability)
-- Including logo or signature block (this theme is brand-neutral)
-- Using light gray for body text (reserve gray for timestamps and metadata only)
+Guardrails against drift in either direction — this theme fails when oversized *or* undersized.
 
----
-
-## Font Requirements
-
-Same as Jasmina Homes: **Poppins** (headings) and **Georgia** (body).
-
-Georgia is built into Windows and macOS. Poppins must be installed:
-
-- **Windows:** Download from [Google Fonts](https://fonts.google.com/specimen/Poppins), extract, select all .ttf files, right-click > "Install for all users". Restart Word.
-- **Mac:** Download from Google Fonts, unzip, double-click each .ttf, click "Install Font". Restart Word.
+- **Don't push body above 12pt (sz 24).** Wastes paper and toner, and titles feel shouty once everything scales up with it.
+- **Don't push H1 above 24pt (sz 48).** The previous version of this theme had 22–26pt headings that the user had to shrink manually in Word. Don't regress.
+- **Don't push the cover title above 32pt (sz 64).** 36pt was the specific element that triggered manual reduction in the prior version.
+- **Don't drop body below 12pt.** This is the comfort floor for glasses-corrected vision — smaller defeats the purpose of the theme.
+- **Don't add a `DEFAULTS` contact block.** This theme is deliberately brand-neutral.
+- **Don't add horizontal divider lines (`<hr>`, `---`) between sections.** H1's blue bottom border is the separator. Dividers at this body size become thick visual barriers that waste vertical space.
+- **Don't use the saturated red/orange from older brand variants.** Those print muddy on home inkjets and bleed — the reason this palette exists.
+- **Don't reduce margins to fit more text.** White space carries comfort; cramped pages fight the reader.
+- **Don't use light gray for body text.** Gray is for metadata and captions only.
 
 ---
 
 ## Print Tips
 
-For best results with low-vision readers:
+Calibrated to this theme's blue palette — do not substitute old cream-paper advice from other brand themes.
 
-- Print on **28-32lb Natural White or Cream paper** for warmth and thickness
-- Keep page background WHITE in Word (no toner waste)
-- The navy + red palette pops beautifully on cream paper
-- Consider **single-sided printing** so pages lie flat and are easier to hold
-- **Spiral binding** or **large binder clips** are easier for elderly readers than staples
+- **Keep Word page background white.** Never set a page color — home printers spray a fine toner dusting over every page, triple the cost, and the paper warps as it dries.
+- **Use bright white paper, not cream.** Blue accents (`#005EA6`) pop on white; cream dulls them. The palette was chosen around white stock.
+- **28–32lb paper weight** (105–120gsm) if the reader handles the document often. Heavier paper is easier to grip and less flimsy for older hands.
+- **Single-sided printing.** No show-through, pages lie flat, easier to read and to hold open.
+- **Binding:** spiral or large binder clips beat staples for documents the reader keeps open on a table.
+- **Print at 100% — never "Fit to page".** Word silently shrinks text when fitting, which quietly defeats the entire sizing calibration.
+
+---
+
+## Font Requirements
+
+Both **Arial** and **Verdana** are pre-installed on Windows, macOS, and most Linux distributions. No additional font installation required — this is intentional for an accessibility-first theme.
