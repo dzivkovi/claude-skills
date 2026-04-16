@@ -102,6 +102,50 @@ The `.skill` file is self-contained. Share it exactly as you would share a ZIP -
 
 ---
 
+## Why I evaluate my skills (and you should too)
+
+Your skill's `description` field tells Claude when to use it. Evals are how you check whether that instruction is actually working — whether Claude picks up your skill when a real user asks for what it does. Without evals, a skill that works perfectly on your desk can silently fail in the wild because the description doesn't match how people really phrase things.
+
+### The two kinds
+
+- **Trigger evals** — does Claude fire the skill when a user asks? Tests *description quality*.
+- **Behaviour evals** — when it fires, does the output come out right? Tests *instruction quality*.
+
+### Start here in 5 minutes
+
+1. Open [`branded-docx-workspace/trigger-eval.json`](./branded-docx-workspace/trigger-eval.json) — 20 real-world queries, 10 that should trigger this skill, 10 that shouldn't. Skim them: that's what a basic trigger-eval set looks like.
+2. Open [`eval_review.html`](./branded-docx-workspace/eval_review.html) in a browser — click through, toggle `should_trigger`, add your own queries, export an updated set.
+3. When you're ready to do this for *your own* skill, install Anthropic's [`/skill-creator`](https://github.com/anthropics/claude-plugins-official/blob/main/plugins/skill-creator/skills/skill-creator/SKILL.md) plugin, open a Claude Code session in your skill's folder, and say something like *"use skill-creator to run trigger evals against my skill."* It generates the queries, runs them against Claude, and reports trigger accuracy.
+
+You don't need to understand the jargon yet — reading the JSON file teaches you what good queries look like, and running the loop once teaches you the rest.
+
+### What running it on this skill taught me
+
+I ran the full loop against v2.5.0 and got 6/12 on training queries and 4/8 on held-back test queries — stable across all 5 iterations. (The split is skill-creator's way of checking whether a description overfits to the exact queries it's tuned on: 60% used to guide improvements, 40% held back to score honestly.) That score *looked* like "the description is already optimal." It wasn't. Every one of the 10 positive queries had `trigger_rate = 0.0` — the skill never fired, across 3 attempts each — and every negative query passed trivially by also not firing. **The whole score was a clean pass-by-default.** Three lessons stuck:
+
+- **Never trust the headline score alone — read per-query `trigger_rate`.** A description that never fires gets a free 50% on a balanced eval.
+- **The `description` field has a hard 1024-character upload cap.** Mine was 1192 chars after v2.5.0; uploads silently rejected it with *"field 'description' in SKILL.md must be at most 1024 characters."* I trimmed it to 964 (same coverage, less synonym redundancy) and rebuilt.
+- **On Windows, prefix `run_loop` with `PYTHONUTF8=1 PYTHONIOENCODING=utf-8`** — the default `cp1252` codec crashes when the live HTML report writes a `✗` character.
+
+### The state of this eval suite
+
+| Check | Status |
+|---|---|
+| Description fits 1024-char upload cap | ✅ 964 / 1024 |
+| Trigger-eval loop runs end-to-end | ✅ 20 queries × 5 iterations |
+| Negative queries correctly don't trigger | ✅ 10 / 10 |
+| Skill fires on natural-language queries | ⚠️ 0 / 10 under the automated test — but that test only checks one of several ways a skill can fire; an independent sanity check is still pending (see workspace README) |
+| Behaviour evals (does the .docx come out right?) | ⬜ Not started |
+
+Honest verdict: the suite has **real coverage on triggering but no coverage on output quality**. The 0 / 10 result is ambiguous — the tool tests one specific invocation path, not all of them. Open questions and next-cycle tasks live in [`branded-docx-workspace/README.md`](./branded-docx-workspace/).
+
+### Deep dive
+
+- [`/skill-creator` docs](https://github.com/anthropics/claude-plugins-official/blob/main/plugins/skill-creator/skills/skill-creator/SKILL.md) — the framework that runs the loop
+- [Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices.md) — Anthropic's guidance on writing descriptions that route well
+
+---
+
 ## Licence
 
 MIT. Use freely, adapt as needed, attribution appreciated but not required.

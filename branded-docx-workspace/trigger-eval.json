@@ -1,82 +1,82 @@
 [
   {
-    "query": "Can you take this listing presentation I wrote and convert it into the JasminaHomes brand? I have the markdown ready, it's a CMA for 42 Thorncliffe Ave",
+    "query": "my father-in-law is 78 and wears reading glasses, he's been struggling with the tiny print on the market summary I sent him last week. can you regenerate it as a polished Word doc using the accessible theme so I can print it 100% on white paper for him this weekend? the markdown source is still in my downloads",
     "should_trigger": true
   },
   {
-    "query": "I need to make a market report for my client. Use the Jasmina brand please. The property is at 188 Broadview and I have the comps data in a spreadsheet",
+    "query": "Can you convert this markdown CMA I wrote for 188 Broadview into a .docx with the Jasmina Homes brand? Include the cover page and add my RE/MAX signature block at the end with the logo",
     "should_trigger": true
   },
   {
-    "query": "hey can you format this doc in my branding? its a seller's guide I typed up for a new listing appointment tomorrow",
+    "query": "ok so I rewrote my seller consultation guide in markdown for Sunday's open house on Danforth. turn it into a styled Word document in my usual brand, add my contact info in the footer",
     "should_trigger": true
   },
   {
-    "query": "make a polished docx from this markdown using the remax brand style. It's a neighbourhood profile for Leslieville that I want to hand out at the open house",
+    "query": "need a polished quarterly market update from the attached md file — use the RE/MAX Bridge palette, include my signature on page 1 with the logo, and make sure the comp table has zebra rows like last time",
     "should_trigger": true
   },
   {
-    "query": "I wrote up a quarterly market update for my sphere of influence email. Can you turn it into a branded Word document? Use the jasminahomes style with the logo",
+    "query": "Make a professional Word doc out of this playbook draft using Anthropic's coral styling - the warm red accent one. Client deliverable going out Monday, needs to look like a real consultancy wrote it",
     "should_trigger": true
   },
   {
-    "query": "convert this property brief to coral style please, it's for an internal presentation at our office meeting next Tuesday",
+    "query": "my dad is going blind in one eye and even with new bifocals he gets tired reading contracts. can you make the enclosed disclosure document in big font for him? he needs to sign by Friday",
     "should_trigger": true
   },
   {
-    "query": "I have a rough draft of a buyer consultation guide in markdown. Can you make it look professional as a Word doc? Use the Jasmina brand",
+    "query": "I have a neighborhood profile for Leslieville typed up in markdown, can you turn it into a branded .docx for tomorrow's listing appointment at 42 Thorncliffe? jasminahomes style please, cover + table of comparable sales",
     "should_trigger": true
   },
   {
-    "query": "take this CMA markdown and give me a .docx with the Jasmina Homes look. Add my signature block at the end with the RE/MAX logo",
+    "query": "convert this thinking memo I wrote into a nice Word document with the Anthropic coral styling. it's about AI adoption in real estate brokerages. feels long but I want it to read as polished, not academic",
     "should_trigger": true
   },
   {
-    "query": "I need a styled report for 55 Danforth Road. Use the branded docx skill with jasminahomes. Include cover page, table of comparable sales, and my contact info in the footer",
+    "query": "quick branded document for my sphere-of-influence email — one-pager about why now is a good time to list. my usual brand theme, include the signature block",
     "should_trigger": true
   },
   {
-    "query": "can you whip up a quick branded document? just a one-pager about why sellers should list with me. Use my usual brand theme",
+    "query": "can you take my March market recap markdown and make it styled, like the Coral brand? section per neighbourhood, some callouts for the top 3 sales of the month, professional cover page",
     "should_trigger": true
   },
   {
-    "query": "I need to update the jasminahomes.md brand file to change the secondary color from red to a darker burgundy. Can you edit the brand config?",
+    "query": "I need to update the jasminahomes.md brand file to shift the secondary red to a darker burgundy. the current AA1120 feels too bright on my Brother inkjet. can you edit the brand token?",
     "should_trigger": false
   },
   {
-    "query": "Can you help me write a listing description for 42 Thorncliffe Ave? 3 bed, 2 bath, recently renovated kitchen, close to the subway",
+    "query": "take this existing .docx report I've already made and just export it to PDF for me, no formatting changes needed, it's going into an email attachment in 10 minutes",
     "should_trigger": false
   },
   {
-    "query": "I want to create a website for jasminahomes.ca using Next.js. Can you scaffold the project with a hero section and property listings page?",
+    "query": "help me write a compelling MLS listing description for 42 Thorncliffe. 3 bed, 2 bath, updated kitchen in 2023, steps to the subway. aim for 150-200 words, warm but not salesy",
     "should_trigger": false
   },
   {
-    "query": "send an email to my client at john@gmail.com with the CMA attached. Subject line should be 'Your Home Valuation Report'",
+    "query": "build me a PowerPoint deck in RE/MAX colours for my buyer consultation next Tuesday — navy headings, red accents, maybe 10 slides covering market trends, financing, and the search process",
     "should_trigger": false
   },
   {
-    "query": "can you read the PDF of the MLS listing sheet I downloaded and pull out the key stats like price, square footage, and lot size?",
+    "query": "my father-in-law complains the fonts are too tiny on his iPhone Mail app. what settings can he change in iOS to make the text bigger without messing up everything else on the phone?",
     "should_trigger": false
   },
   {
-    "query": "I need to make a spreadsheet tracking my real estate transactions this year. Columns for address, list price, sale price, commission, close date",
+    "query": "I want to copy the coral brand palette and Poppins/Georgia pairing into a Figma file so my graphic designer can work with it for a web landing page. what hex codes and font weights should she use?",
     "should_trigger": false
   },
   {
-    "query": "help me write a social media post for Instagram about a new listing at 200 King St. Keep it short and punchy with some emoji",
+    "query": "spreadsheet request — need to build a tracker in Excel with the RE/MAX Bridge colors for my transactions this year. columns for address, list price, sale price, commission, close date",
     "should_trigger": false
   },
   {
-    "query": "can you convert this Word doc to PDF? I already have the formatted file, just need to export it",
+    "query": "make a large print version of the 'no solicitation' sign for the front door of my open house. 11x17, bold, readable from the sidewalk. ideally as a PDF I can print at Staples",
     "should_trigger": false
   },
   {
-    "query": "I want to create a PowerPoint presentation about the Toronto housing market forecast for 2026. Use RE/MAX colors if possible",
+    "query": "read the attached .docx and pull out the key dates, the buyer's name, and any contingencies into a bullet list I can paste into my transaction-tracking sheet",
     "should_trigger": false
   },
   {
-    "query": "can you help me set up a Google Sheets template for tracking open house visitor sign-ins? I need name, email, phone, and agent columns",
+    "query": "can you take my Google Doc (link in my message) and just export it as a .docx, preserving the formatting I already have? no rebranding, no styling changes — just the format conversion",
     "should_trigger": false
   }
 ]
