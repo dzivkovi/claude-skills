@@ -3,7 +3,7 @@ name: branded-docx
 description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files (coral, remax, jasminahomes, accessible). Use whenever the user wants a branded, professional Word document - reports, briefs, memos, playbooks, CMAs, listing presentations, market reports, or any .docx where visual quality matters. Triggers: 'branded report', 'coral docx', 'remax report', 'jasminahomes style', 'Jasmina Homes', 'my brand', 'in my style', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', 'accessible', 'large print', 'big font', 'easier to read', 'for my father', 'for someone older', 'reading glasses', 'elder reader', 'presbyopia'. Also triggers when the user names a brand or asks for 'my usual theme'/'my usual brand'. Reads brands/ to apply the theme. Logos and signature blocks are optional, off by default. All base DOCX rules apply - see the docx skill."
 metadata:
   author: Daniel Zivkovic
-  version: 2.5.0
+  version: 2.5.1
 ---
 
 # Branded DOCX - Pluggable Brand Themes
