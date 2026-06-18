@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-A personal library of portable `.skill` files for Claude.ai. Each skill is a ZIP archive containing instructions (`SKILL.md`), reference docs, setup scripts, and sample assets. Users upload `.skill` files to Claude.ai Settings > Capabilities > Skills to permanently extend Claude's behavior.
+A personal library of portable skill `.zip` files for Claude.ai. Each skill is a ZIP archive (the skill folder at the archive root) containing instructions (`SKILL.md`), reference docs, setup scripts, and sample assets. Users upload the `.zip` under Claude.ai Settings > Skills to permanently extend Claude's behavior. (claude.ai requires a `.zip`, not the older `.skill` extension.)
 
 ## Build Commands
 
@@ -16,7 +16,7 @@ A personal library of portable `.skill` files for Claude.ai. Each skill is a ZIP
 ./scripts/build-skills.sh branded-docx
 ```
 
-The build script zips each skill folder that contains a `SKILL.md` and outputs `releases/<skill-name>.skill`.
+The build script zips each skill folder that contains a `SKILL.md` and outputs `releases/<skill-name>.zip` (skill folder at the archive root, as claude.ai requires).
 
 ## Skill Folder Convention
 
@@ -31,14 +31,15 @@ Every skill under `skills/<skill-name>/` follows this structure:
 
 ## Current Skills
 
-- **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with four brands: **coral** (Anthropic visual identity: Poppins + Georgia, warm red accent), **remax** (RE/MAX Bridge palette: Metropolis + Arial, navy/red), **jasminahomes** (PropTech Luxury hybrid: RE/MAX colors on Coral's dense layout, Poppins + Georgia), and **accessible** (high-readability theme for glasses wearers: Arial + Verdana, deep blue palette, brand-neutral — calibrated for presbyopia, not low vision). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
+- **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with five brands: **coral** (Anthropic visual identity: Poppins + Georgia, warm red accent), **remax** (RE/MAX Bridge palette: Metropolis + Arial, navy/red), **jasminahomes** (PropTech Luxury hybrid: RE/MAX colors on Coral's dense layout, Poppins + Georgia), **accessible** (high-readability theme for glasses wearers: Arial + Verdana, deep blue palette, brand-neutral - calibrated for presbyopia, not low vision), and **magma** (Magma Inc. house identity from magmainc.ca: Montserrat as the single typeface with hierarchy by weight, Bridge Blue navy signature, two-reds-chosen-by-surface rule). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
+- **branded-pptx** — Generates `.pptx` decks with the same pluggable-brand model, layered on Anthropic's base `pptx` skill. Distils prose onto slide faces and pushes full wording into speaker notes via `addNotes()`. Ships the **magma** brand today (shares Magma's palette with branded-docx so a deck and its document read as one identity; each skill keeps its own `brands/` copy). Currently version 0.1.0.
 
 ## Key Architectural Notes
 
-- Skills are self-contained: each skill folder zips into a standalone `.skill` file with no cross-skill dependencies.
-- `SKILL.md` is the entry point Claude reads at runtime — its `description` field controls trigger-phrase matching.
-- The branded-docx skill layers on top of a separate base `docx` skill (not in this repo) for technical DOCX generation rules. Brand themes live in `brands/*.md` — one file per brand.
-- `.skill` files in `releases/` are binary artifacts committed to git; they are built from source via `build-skills.sh`.
+- Skills are self-contained in *packaging*, not in *capability*: each folder zips into a standalone `.zip` that carries everything it defines (SKILL.md, brand files, logos), but the Skills format has no dependency manifest - there is no `requires:` field, so a skill cannot declare or auto-install another skill. `branded-docx` and `branded-pptx` are deliberately thin brand layers that expect the base `docx`/`pptx` skill to be installed separately; if a base skill is absent they still load and trigger, but Claude falls back on general knowledge instead of the base skill's codified rules.
+- `SKILL.md` is the entry point Claude reads at runtime - its `description` field controls trigger-phrase matching.
+- `branded-docx` layers on the base `docx` skill and `branded-pptx` on the base `pptx` skill (neither base lives in this repo) for the technical generation rules. Brand themes live in each skill's `brands/*.md` - one file per brand. Runtime libraries (`docx`, `pptxgenjs`) and the slide-QA binaries (LibreOffice, Poppler) are not bundled either; each SKILL.md's Setup section carries the install commands, which Claude runs in whatever sandbox executes the skill (an ephemeral Linux container on claude.ai, your real machine under Claude Code).
+- `.zip` files in `releases/` are binary artifacts committed to git; they are built from source via `build-skills.sh` and attached to per-skill GitHub Releases for non-programmer download.
 
 ## Evaluation
 

@@ -2,7 +2,7 @@
 
 Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
-Each skill is a portable `.skill` file (a ZIP under the hood) that you upload once to Claude's settings and it permanently changes how Claude behaves - no prompting, no reminding, no repeating yourself.
+Each skill is a portable `.zip` file that you upload once to Claude's settings and it permanently changes how Claude behaves - no prompting, no reminding, no repeating yourself.
 
 ---
 
@@ -16,11 +16,13 @@ Anthropic happens to have one of the cleanest brand systems in the AI space: a r
 
 The result is documents that feel native to the AI world, carry subtle credibility by association, and most importantly - just look good without extra effort.
 
+Two things have changed since then. First, the same brand layer now drives **slides**, not just documents: `branded-pptx` extends Anthropic's base `pptx` skill the way `branded-docx` extends `docx`. Second, I stopped only borrowing other identities and built my own: **Magma**, the house brand of my consultancy [Magma Inc.](https://magmainc.ca) - one typeface (Montserrat), a Bridge Blue navy signature, and a disciplined two-reds-by-surface rule. It is defined once and shared across both Word and slides, so a document and its deck read as one identity.
+
 ---
 
 ## How Claude skills work
 
-A skill is a folder of instructions, code templates, reference documents, and setup scripts, compressed into a single `.skill` file. When uploaded to Claude:
+A skill is a folder of instructions, code templates, reference documents, and setup scripts, compressed into a single `.zip` file (with the skill folder at the archive root). When uploaded to Claude:
 
 1. Claude reads the `SKILL.md` file to understand the new capability
 2. Trigger phrases in your chat automatically activate the relevant skill
@@ -34,18 +36,20 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
-| [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with four brands (see below). Add new brands by creating one `.md` file. | `branded report`, `coral docx`, `jasminahomes style`, `accessible`, `large print`, `my branding`, `professional Word doc` |
+| [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with five brands (see below). Add new brands by creating one `.md` file. | `branded report`, `coral docx`, `jasminahomes style`, `accessible`, `large print`, `my branding`, `professional Word doc` |
+| [branded-pptx](./skills/branded-pptx/) | Generates PowerPoint decks with the same pluggable brand themes, as a brand layer on top of Anthropic's base `pptx` skill. Distils prose onto slides and pushes full wording into speaker notes. Ships the **Magma** brand today. | `branded deck`, `magma deck`, `coral slides`, `turn this into slides`, `my brand deck`, `polished deck` |
 
 ### Available brands
 
 | Brand | File | Identity | Typography | Use case |
 |-------|------|----------|------------|----------|
+| **Magma** | [docx](./skills/branded-docx/brands/magma.md) / [pptx](./skills/branded-pptx/brands/magma.md) | My own house brand from [magmainc.ca](https://magmainc.ca) - Bridge Blue navy signature, two reds chosen by surface, cool near-white tones | Montserrat (one typeface, hierarchy by weight) | My consultancy's own documents and decks, as one identity |
 | **Coral** | [coral.md](./skills/branded-docx/brands/coral.md) | Anthropic visual identity - warm red accent, off-white tone | Poppins + Georgia | Client reports, tech briefs, polished deliverables |
 | **RE/MAX** | [remax.md](./skills/branded-docx/brands/remax.md) | RE/MAX Bridge palette - deep navy, bridge red, warm neutrals | Metropolis + Arial | Real estate branded documents |
 | **Jasmina Homes** | [jasminahomes.md](./skills/branded-docx/brands/jasminahomes.md) | PropTech Luxury hybrid - RE/MAX colors on Coral's dense, modern layout | Poppins + Georgia | Real estate documents with tech-forward feel |
 | **Accessible** | [accessible.md](./skills/branded-docx/brands/accessible.md) | High-readability theme for glasses wearers - WCAG-grounded contrast, deep blue accent that prints crisp, brand-neutral | Arial + Verdana (both built-in) | Printed documents for adult readers with reading glasses (presbyopia) - not a low-vision theme |
 
-More skills will be added as the need arises.
+A brand is just a Markdown file of tokens, so the same identity can drive both skills. **Magma** ships for both Word (`branded-docx`) and slides (`branded-pptx`) today; the other four are document themes. More brands and skills will be added as the need arises.
 
 ---
 
@@ -57,14 +61,24 @@ claude-skills/
     branded-docx/                     # Skill: branded Word documents
       SKILL.md                          # Brand-agnostic engine
       brands/
+        magma.md                        # Magma Inc. house identity (magmainc.ca)
         coral.md                        # Anthropic visual identity theme
         remax.md                        # RE/MAX Bridge palette theme
         jasminahomes.md                 # PropTech Luxury hybrid theme
         accessible.md                   # High-readability theme for glasses wearers
         coral-logo.png                  # Coral logo
         remax-logo.png                  # RE/MAX logo (400x245px)
+        magma-logo.png                  # Magma logo
+    branded-pptx/                     # Skill: branded PowerPoint decks
+      SKILL.md                          # Brand-agnostic deck engine (extends base pptx)
+      brands/
+        magma.md                        # Magma Inc. identity for slides
+        magma-logo-dark.png             # Logo lockup for navy bookend slides
+        magma-logo-white.png            # Logo lockup for light slides
+        magma-logo-black.png            # Mono logo variant
   releases/
-    branded-docx.skill                # Ready-to-upload build (ZIP)
+    branded-docx.zip                  # Ready-to-upload build (folder at zip root)
+    branded-pptx.zip                  # Ready-to-upload build (folder at zip root)
   scripts/
     build-skills.sh                     # Packages skills/ into releases/
   README.md
@@ -78,17 +92,22 @@ Each skill follows the same folder convention:
 
 ## Installing a skill
 
-1. Download the `.skill` file from the [`releases/`](./releases/) folder (or the [Releases](../../releases) page once available)
-2. Go to [claude.ai](https://claude.ai) > Settings > Capabilities > Skills
-3. Click "Upload skill" and select the `.skill` file
+No coding required - this is a two-minute upload:
+
+1. Download the `.zip` file from the [Releases](../../releases) page (or the [`releases/`](./releases/) folder)
+2. In [claude.ai](https://claude.ai), open **Settings** and find **Skills** (listed under Capabilities, or Customize, depending on your plan)
+3. Click **Create skill** (the **+**) and select the `.zip`
 4. Done - the skill is active in all future conversations
 
-### First-time setup (branded-docx)
+That is the whole process for most people. The developer requirements below only matter if you run the skills locally in Claude Code rather than on claude.ai.
 
-The branded-docx skill requires Node.js and `npm install -g docx`. Each brand file lists its font requirements:
+### First-time setup (local / Claude Code only)
+
+On claude.ai you do not install anything: Claude provisions Node, the generation libraries, and font fallbacks inside its own sandbox each session. If instead you run a skill **locally under Claude Code**, install the runtime it calls: `branded-docx` needs Node.js + `npm install -g docx`; `branded-pptx` needs Node.js + `npm install -g pptxgenjs`, plus LibreOffice (`soffice`) and Poppler (`pdftoppm`) for its slide-render QA loop, and Anthropic's base `pptx` skill (the only place the marketplace step applies: `/plugin marketplace add anthropics/skills`). Each brand file lists its own font requirements:
 
 | Brand | Fonts needed |
 |-------|-------------|
+| Magma | Montserrat ([Google Fonts](https://fonts.google.com/specimen/Montserrat)) - install static Regular + Bold cuts, not only the variable font |
 | Coral | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
 | RE/MAX | Metropolis ([GitHub](https://github.com/chrismsimpson/Metropolis)) + Arial (built-in) |
 | Jasmina Homes | Poppins ([Google Fonts](https://fonts.google.com/specimen/Poppins)) + Georgia (built-in) |
@@ -98,7 +117,7 @@ The branded-docx skill requires Node.js and `npm install -g docx`. Each brand fi
 
 ## Sharing skills
 
-The `.skill` file is self-contained. Share it exactly as you would share a ZIP - email, Dropbox, USB. The recipient uploads it to their own Claude settings. No accounts, no dependency on this repo.
+The `.zip` file is self-contained. Share it exactly as you would share any file - email, Dropbox, USB, or just point people at the [Releases](../../releases) page. The recipient uploads it to their own Claude settings. No accounts, no marketplace, no dependency on this repo.
 
 ---
 

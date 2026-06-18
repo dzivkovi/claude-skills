@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # build-skills.sh
-# Packages each skill in skills/ into a .skill file in releases/.
+# Packages each skill in skills/ into a .zip file in releases/.
+# claude.ai's "Customize > Skills" uploader requires a .zip with the skill
+# folder at the archive root (not the old .skill extension). Each skill builds
+# to its own zip so users can install them separately.
 #
 # Usage:
 #   ./scripts/build-skills.sh              # build all skills
@@ -34,7 +37,7 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     continue
   fi
 
-  out_file="$RELEASES_DIR/${skill_name}.skill"
+  out_file="$RELEASES_DIR/${skill_name}.zip"
 
   # Pack into a temp location then move (avoids partial writes)
   tmp_dir="$(mktemp -d)"
@@ -51,7 +54,7 @@ for skill_dir in "$SKILLS_DIR"/*/; do
   trap - EXIT
 
   size="$(du -sh "$out_file" | cut -f1)"
-  echo "  built: ${skill_name}.skill  (${size})"
+  echo "  built: ${skill_name}.zip  (${size})"
   built=$((built + 1))
 done
 
