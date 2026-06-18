@@ -37,7 +37,7 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
 | [branded-docx](./skills/branded-docx/) | Generates Word documents with pluggable brand themes. Ships with five brands (see below). Add new brands by creating one `.md` file. | `branded report`, `coral docx`, `jasminahomes style`, `accessible`, `large print`, `my branding`, `professional Word doc` |
-| [branded-pptx](./skills/branded-pptx/) | Generates PowerPoint decks with the same pluggable brand themes, as a brand layer on top of Anthropic's base `pptx` skill. Distils prose onto slides and pushes full wording into speaker notes. Ships the **Magma** brand today. | `branded deck`, `magma deck`, `coral slides`, `turn this into slides`, `my brand deck`, `polished deck` |
+| [branded-pptx](./skills/branded-pptx/) | Generates PowerPoint decks with the same pluggable brand themes, as a brand layer on top of Anthropic's base `pptx` skill. Distils prose onto slides and pushes full wording into speaker notes. Ships the **Magma** brand today. v0.2.0 adds a font preflight (install the brand font as static cuts, or decks render rough) and a render-and-fix QA pass so output comes out sharp, not first-draft. | `branded deck`, `magma deck`, `coral slides`, `turn this into slides`, `my brand deck`, `polished deck` |
 
 ### Available brands
 
