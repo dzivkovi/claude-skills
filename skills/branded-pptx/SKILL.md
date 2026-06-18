@@ -3,7 +3,7 @@ name: branded-pptx
 description: "Creates PowerPoint (.pptx) decks styled with a brand identity from pluggable theme files (coral, magma, and more over time). Use whenever the user wants a branded, professional slide deck - leadership decks, talk slides, pitch decks, listing presentations, or any .pptx where visual quality matters. Triggers: 'branded deck', 'coral slides', 'coral pptx', 'magma deck', 'magma slides', 'magma pptx', 'my brand deck', 'in my style', 'styled presentation', 'polished deck', 'make slides look professional', 'turn this into slides', 'my usual theme'. Reads brands/ to apply the theme. This is a brand layer on top of Anthropic's base pptx skill - all base pptx technical rules still apply."
 metadata:
   author: Daniel Zivkovic
-  version: 0.1.0
+  version: 0.2.0
 ---
 
 # Branded PPTX - Pluggable Brand Themes
@@ -11,6 +11,50 @@ metadata:
 This skill extends Anthropic's base `pptx` skill with pluggable brand themes, the same way `branded-docx` extends the base `docx` skill. Install the base skill separately (`/plugin marketplace add anthropics/skills`, then the `document-skills` plugin); nothing from it is bundled here. Follow all of its technical rules (pptxgenjs API, the QA loop, the file-corruption pitfalls). This file adds the brand layer on top.
 
 The governing design idea, borrowed from the base skill and worth restating: a deck is spatial composition, not flowing text. Brand tokens give you palette and type for free, but the layout decision on each slide is yours to make. Distil; do not pour paragraphs onto slides.
+
+---
+
+## Preflight: why two runs of this skill can look very different
+
+A skill encodes the process, not the finished pixels. The same SKILL.md yields a sharp deck on one machine and a rough one on another, and the cause is almost always environment, not taste. Confirm all three before generating. Skip this and the deck ships with substituted fonts and unspotted overflow.
+
+### 1. The brand font must be installed AS STATIC CUTS
+
+This is the single most common cause of "the fonts don't fill the boxes." The deck names the brand font (e.g. Montserrat). If the machine that GENERATES, or the machine that OPENS the deck, lacks it, the app substitutes a font with different widths: text reflows and boxes overflow. Two traps:
+
+- A bare **variable** font (`Montserrat[wght].ttf`) is read by LibreOffice and some Office installs as "Montserrat Thin", so headings render thin and the QA preview lies. Install **static** Regular and Bold cuts named plainly "Montserrat".
+- If you only have the variable file, instance static cuts once:
+
+```bash
+pip install fonttools --break-system-packages -q
+python3 - <<'PY'
+from fontTools.varLib.instancer import instantiateVariableFont
+from fontTools.ttLib import TTFont
+VF="Montserrat-VariableFont_wght.ttf"
+def cut(w, sub, bold, out):
+    f=TTFont(VF); instantiateVariableFont(f,{"wght":w},inplace=True); n=f["name"]
+    for i,v in [(1,"Montserrat"),(2,sub),(4,f"Montserrat {sub}"),(6,f"Montserrat-{sub}"),(16,"Montserrat"),(17,sub)]:
+        n.setName(v,i,3,1,0x409); n.setName(v,i,1,0,0)
+    o,h=f["OS/2"],f["head"]
+    if bold: o.fsSelection=(o.fsSelection&~0x40)|0x20; h.macStyle|=1
+    else:    o.fsSelection=(o.fsSelection&~0x20)|0x40; h.macStyle&=~1
+    f.save(out)
+cut(400,"Regular",False,"Montserrat-Regular.ttf"); cut(700,"Bold",True,"Montserrat-Bold.ttf")
+PY
+# Linux: cp *.ttf ~/.fonts/ && fc-cache -f   |   mac/win: double-click each to install
+```
+
+If the font is missing on the user's own machine, say so plainly: the deck is correct, but they must install Montserrat (the brand kit's `fonts/`, free under OFL) for it to render as designed. A correct file on a font-less machine is the rough result they will see.
+
+### 2. The QA render tools must be present
+
+LibreOffice (`soffice`) and Poppler (`pdftoppm`) are what let you SEE a slide and catch overflow. Absent, you generate blind and ship first-draft defects. Install them first (`brew install libreoffice poppler`, or apt), not after.
+
+### 3. Then run the QA loop for real
+
+The polish lives in the loop, not the templates. See the Definition of Done below.
+
+---
 
 ## Brand Selection
 
@@ -50,7 +94,7 @@ When the user provides markdown, apply these mappings. Slides are not documents:
 | `> blockquote` | Speaker note via `addNotes()` - never rendered on the slide face |
 | `- ` / `* ` bullets | A bullet block (`bullet: true`) or, better, distilled into a card grid |
 | `\| table \|` | Branded table (dark header row, zebra body) |
-| ` ```mermaid ` | Recreate as native shapes (`flowBox` + `arrow`), or rasterise to PNG and place |
+| ` ```mermaid ` | Recreate as native shapes. Render EVERY edge, including back-edges: a loop such as `G --> B` is a real return arrow drawn back into node B, not a caption. Flattening a loop to a text label is the most common way these diagrams lose their meaning. If 7+ nodes won't fit one row, wrap to a two-row racetrack so the return arrow stays visible. |
 | `**Label:**` | Accent-coloured label run, then body run |
 
 ### Text fidelity vs. distillation
@@ -194,16 +238,23 @@ slide.addNotes(fullProseAndAnyBlockquoteNotesForThisSlide);
 
 ---
 
-## QA (required)
+## QA: Definition of Done (not optional)
 
-Follow the base skill's QA loop. Render slides to images and inspect:
+The templates give a reasonable first draft. The sharpness comes from rendering every slide and fixing what you see. Do not deliver until this passes.
+
+1. Render the whole deck to images:
 
 ```bash
 python <base-pptx-skill>/scripts/office/soffice.py --headless --convert-to pdf out.pptx
 rm -f slide-*.jpg && pdftoppm -jpeg -r 110 out.pdf slide
 ```
 
-Check text fit first. **Apply the brand file's font-QA caveat:** Poppins and Georgia are substituted by LibreOffice, so the preview's text-fit on those elements is approximate. Trust the ~10% slack you built in, not the preview, for Poppins/Georgia boxes.
+2. Look at EVERY slide. Check text bounds first: no run may cross or overflow its shape; no card may touch a callout or a neighbour; a title that wraps must not crowd the line beneath it.
+3. Fix by nudging coordinates or reducing font size, then re-render the affected slides. Expect one or two genuine defects on the first pass (a wrapped title, a card grid run too tight). Fixing them is the job, not an extra step.
+4. Hidden slides are dropped from PDF export, so to QA an appendix, render a temporary copy with `hidden` turned off.
+5. If the brand font is not installed as static cuts (Preflight 1), the preview substitutes and its text-fit is unreliable; install the font so the preview tells the truth, and still add ~10% height slack on heading boxes.
+
+Declare done after seeing every slide render clean, never after merely generating.
 
 ---
 
@@ -212,6 +263,6 @@ Check text fit first. **Apply the brand file's font-QA caveat:** Poppins and Geo
 1. Node.js (`node --version`)
 2. `npm install -g pptxgenjs`
 3. For the QA render only: LibreOffice (`soffice`) and Poppler (`pdftoppm`). On macOS: `brew install libreoffice poppler`. The `docx` skill never needed these; the slide QA loop does.
-4. Install Poppins so PowerPoint renders titles true (per the brand file).
+4. Install the brand font as static cuts so the deck renders true and the QA preview is trustworthy (see Preflight 1). This is the step that most often gets skipped and is the usual reason a deck looks rough.
 
 All base `pptx` technical rules apply - read that skill for images, charts, masters, and XML editing.
