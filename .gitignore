@@ -4,3 +4,7 @@
 branded-docx-workspace/run-results/
 print/
 work/
+
+# Python bytecode (e.g. from running scripts/setup/font_preflight.py)
+__pycache__/
+*.pyc

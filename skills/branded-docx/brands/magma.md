@@ -181,4 +181,11 @@ This brand requires **Montserrat** (headings and body). It is free to install an
 - **Windows / Mac:** install from the kit's `fonts/` folder, or from [Google Fonts](https://fonts.google.com/specimen/Montserrat). Restart Word.
 - **Linux:** `mkdir -p ~/.fonts && cp Montserrat-*VariableFont*.ttf ~/.fonts/ && fc-cache -f`
 
-A variable font carries all weights in one file. If an older Word or a print RIP does not understand variable fonts, install the static cuts (Regular, Medium, SemiBold, Bold) from Google Fonts instead. If Montserrat is missing, Word substitutes its default sans and the document loses its character.
+A variable font carries all weights in one file, but this is not an edge case to ignore: LibreOffice (the headless PDF and QA renderer) and some Word installs read a bare variable Montserrat as "Montserrat Thin" and render the wrong weight, while the preview looks fine. Install **static** Regular and Bold cuts, not only the variable file. Instance them from the bundled variable font with the preflight helper, which fails loud if it cannot:
+
+```bash
+python scripts/setup/font_preflight.py --family Montserrat \
+  --source-file fonts/Montserrat-VariableFont_wght.ttf --weights 400,700
+```
+
+or download the `static/` folder from [Google Fonts](https://fonts.google.com/specimen/Montserrat). If Montserrat is missing entirely, Word substitutes its default sans and the document loses its character. See [`references/font-fidelity.md`](../references/font-fidelity.md) for the full doctrine, including embedding the font before you send the file.

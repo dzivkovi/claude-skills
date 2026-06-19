@@ -197,12 +197,22 @@ The logo is optional and off by default. Include only when the user explicitly r
 
 ## Font Requirements
 
-This brand requires **Poppins** (headings) and **Georgia** (body).
+This brand requires **Poppins** (headings) and **Georgia** (body). Read [`references/font-fidelity.md`](../references/font-fidelity.md) for the full font doctrine; the brand-specific notes follow.
 
-Georgia is built into Windows and macOS. Poppins must be installed:
+**Georgia on a headless box.** Georgia is built into Windows and macOS, but it is a proprietary Microsoft font and is absent from Linux containers (CI, the claude.ai sandbox). Rendered to PDF there, Georgia silently substitutes to a default serif and the body never looks like Georgia. Substitute **Gelasio**, the metric-compatible open replacement: it has Georgia's metrics, so line breaks and pagination are unchanged (the measurements live in the [font-fidelity reference](../references/font-fidelity.md)). Do not use Lora or another look-alike; only a metric-compatible face keeps pagination identical. One command (instances static cuts, installs, aliases Georgia, fails loud if it cannot):
+
+```bash
+python scripts/setup/font_preflight.py --family Georgia --substitute Gelasio \
+  --source-url "https://raw.githubusercontent.com/google/fonts/main/ofl/gelasio/Gelasio%5Bwght%5D.ttf" \
+  --weights 400,700 --alias
+```
+
+Poppins must be installed:
 
 - **Windows:** Download from [Google Fonts](https://fonts.google.com/specimen/Poppins), extract, select all .ttf files, right-click > "Install for all users". Restart Word.
 - **Mac:** Download from Google Fonts, unzip, double-click each .ttf, click "Install Font". Restart Word.
 - **Linux:** `mkdir -p ~/.fonts && cd ~/.fonts && for w in Regular Bold SemiBold Italic BoldItalic; do curl -Lo "Poppins-${w}.ttf" "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-${w}.ttf"; done && fc-cache -fv`
 
 If Poppins is missing, Word silently falls back to Arial. The document opens fine but headings lose their character.
+
+**Before sending a coral document outside your machine,** embed the fonts or export to PDF (PDF embeds and subsets automatically) so a recipient without Poppins or Georgia still sees the design. See the font-fidelity reference, "Distribution".
