@@ -3,7 +3,7 @@ name: branded-pptx
 description: "Creates PowerPoint (.pptx) decks styled with a brand identity from pluggable theme files (coral, magma, and more over time). Use whenever the user wants a branded, professional slide deck - leadership decks, talk slides, pitch decks, listing presentations, or any .pptx where visual quality matters. Triggers: 'branded deck', 'coral slides', 'coral pptx', 'magma deck', 'magma slides', 'magma pptx', 'my brand deck', 'in my style', 'styled presentation', 'polished deck', 'make slides look professional', 'turn this into slides', 'my usual theme'. Reads brands/ to apply the theme. This is a brand layer on top of Anthropic's base pptx skill - all base pptx technical rules still apply."
 metadata:
   author: Daniel Zivkovic
-  version: 0.2.0
+  version: 0.3.0
 ---
 
 # Branded PPTX - Pluggable Brand Themes
@@ -20,31 +20,19 @@ A skill encodes the process, not the finished pixels. The same SKILL.md yields a
 
 ### 1. The brand font must be installed AS STATIC CUTS
 
-This is the single most common cause of "the fonts don't fill the boxes." The deck names the brand font (e.g. Montserrat). If the machine that GENERATES, or the machine that OPENS the deck, lacks it, the app substitutes a font with different widths: text reflows and boxes overflow. Two traps:
+This is the single most common cause of "the fonts don't fill the boxes." The deck names the brand font (e.g. Montserrat). If the machine that GENERATES, or the machine that OPENS the deck, lacks it, the app substitutes a font with different widths: text reflows and boxes overflow. A bare **variable** font (`Montserrat[wght].ttf`) is read by LibreOffice and some Office installs as "Montserrat Thin", so headings render thin and the QA preview lies. Install **static** Regular and Bold cuts named plainly "Montserrat".
 
-- A bare **variable** font (`Montserrat[wght].ttf`) is read by LibreOffice and some Office installs as "Montserrat Thin", so headings render thin and the QA preview lies. Install **static** Regular and Bold cuts named plainly "Montserrat".
-- If you only have the variable file, instance static cuts once:
+Run the preflight, which instances static cuts from a variable font and FAILS LOUD if the font cannot be made available (never silently substitutes):
 
 ```bash
-pip install fonttools --break-system-packages -q
-python3 - <<'PY'
-from fontTools.varLib.instancer import instantiateVariableFont
-from fontTools.ttLib import TTFont
-VF="Montserrat-VariableFont_wght.ttf"
-def cut(w, sub, bold, out):
-    f=TTFont(VF); instantiateVariableFont(f,{"wght":w},inplace=True); n=f["name"]
-    for i,v in [(1,"Montserrat"),(2,sub),(4,f"Montserrat {sub}"),(6,f"Montserrat-{sub}"),(16,"Montserrat"),(17,sub)]:
-        n.setName(v,i,3,1,0x409); n.setName(v,i,1,0,0)
-    o,h=f["OS/2"],f["head"]
-    if bold: o.fsSelection=(o.fsSelection&~0x40)|0x20; h.macStyle|=1
-    else:    o.fsSelection=(o.fsSelection&~0x20)|0x40; h.macStyle&=~1
-    f.save(out)
-cut(400,"Regular",False,"Montserrat-Regular.ttf"); cut(700,"Bold",True,"Montserrat-Bold.ttf")
-PY
-# Linux: cp *.ttf ~/.fonts/ && fc-cache -f   |   mac/win: double-click each to install
+python scripts/setup/font_preflight.py --family Montserrat \
+  --source-url "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf" \
+  --weights 400,700
 ```
 
-If the font is missing on the user's own machine, say so plainly: the deck is correct, but they must install Montserrat (the brand kit's `fonts/`, free under OFL) for it to render as designed. A correct file on a font-less machine is the rough result they will see.
+See [`references/font-fidelity.md`](references/font-fidelity.md) for the full doctrine, including substituting a metric-compatible face when a proprietary font is absent (Gelasio for Georgia, never a look-alike like Lora).
+
+If the font is missing on the user's own machine, the deck is correct but renders as a substitute. Either tell them to install Montserrat (free under OFL), or embed it before sending (see Distribution, below). A correct file on a font-less machine is the rough result they will see.
 
 ### 2. The QA render tools must be present
 
@@ -258,11 +246,20 @@ Declare done after seeing every slide render clean, never after merely generatin
 
 ---
 
+## Distribution: before the deck leaves your machine
+
+Installing the brand font on your machine makes the deck render true for YOU. It does nothing for whoever you send it to: without the font, their PowerPoint substitutes and the text reflows, the exact rough look the Preflight fixed on your end. pptxgenjs CANNOT embed fonts, so close the gap one of two ways:
+
+- Embed in PowerPoint: File, Options, Save, "Embed fonts in the file", choose "Embed all characters". The .pptx now carries Montserrat and travels self-contained.
+- Or send a PDF (export embeds and subsets fonts automatically). Verify with `pdffonts deck.pdf`: every row should read `yes yes`.
+
+See [`references/font-fidelity.md`](references/font-fidelity.md), "Distribution", for the full rule. A deck that looks perfect on your screen but was never embedded is the single most common way the brand breaks on someone else's laptop.
+
 ## Setup
 
 1. Node.js (`node --version`)
 2. `npm install -g pptxgenjs`
 3. For the QA render only: LibreOffice (`soffice`) and Poppler (`pdftoppm`). On macOS: `brew install libreoffice poppler`. The `docx` skill never needed these; the slide QA loop does.
-4. Install the brand font as static cuts so the deck renders true and the QA preview is trustworthy (see Preflight 1). This is the step that most often gets skipped and is the usual reason a deck looks rough.
+4. Run the font preflight (`scripts/setup/font_preflight.py`) so the brand font is installed as static cuts and the QA preview is trustworthy (see Preflight 1). This is the step that most often gets skipped and is the usual reason a deck looks rough.
 
 All base `pptx` technical rules apply - read that skill for images, charts, masters, and XML editing.

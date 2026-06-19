@@ -3,7 +3,7 @@ name: branded-docx
 description: "Creates Word (.docx) documents styled with a brand identity from pluggable theme files (coral, remax, jasminahomes, accessible, magma). Use whenever the user wants a branded, professional Word document - reports, briefs, memos, playbooks, CMAs, listing presentations, market reports, or any .docx where visual quality matters. Triggers: 'branded report', 'coral docx', 'remax report', 'jasminahomes style', 'Jasmina Homes', 'magma docx', 'magma report', 'my brand', 'in my style', 'Anthropic style', 'styled document', 'polished report', 'make it look professional', 'convert this markdown', 'with logo', 'add signature block', 'accessible', 'large print', 'big font', 'easier to read', 'for my father', 'for someone older', 'reading glasses', 'elder reader', 'presbyopia'. Also triggers when the user names a brand or asks for 'my usual theme'/'my usual brand'. Reads brands/ to apply the theme. Logos and signature blocks are optional, off by default. All base DOCX rules apply - see the docx skill."
 metadata:
   author: Daniel Zivkovic
-  version: 2.6.0
+  version: 2.7.0
 ---
 
 # Branded DOCX - Pluggable Brand Themes
@@ -272,10 +272,26 @@ function brandTable(headers, rows, contentWidth = 9360) {
 
 ---
 
+## Font fidelity (read before generating)
+
+Brand fonts only render true if the machine that generates or opens the file actually has them, as usable static cuts. This is the most common reason a document looks rough. Before generating, run the font preflight (it fails loud rather than letting a render silently substitute):
+
+```bash
+# Verify the brand's fonts resolve, or instance/install them; see the brand file for exact flags.
+python scripts/setup/font_preflight.py --family <BrandFont>
+```
+
+Two rules that catch most defects, both detailed in [`references/font-fidelity.md`](references/font-fidelity.md):
+
+- On a headless Linux box, a proprietary font like **Georgia** is absent and substitutes to the wrong typeface. Use the metric-compatible open replacement (**Gelasio** for Georgia), never a look-alike. The coral and jasminahomes brand files carry the one-command recipe.
+- A bare **variable** font is read as "Thin" by LibreOffice and some Word installs. Install static Regular/Bold cuts; the preflight instances them.
+
+**Before the file leaves your machine,** embed the fonts (Word: File, Options, Save, "Embed fonts in the file") or export to PDF, so a recipient without the brand fonts still sees the design. Installing fonts on your machine fixes your render, not theirs.
+
 ## Setup
 
 1. Node.js installed (`node --version`)
 2. `npm install -g docx`
-3. Check your brand file for required fonts
+3. Check your brand file for required fonts, and run the font preflight above (`scripts/setup/font_preflight.py`)
 
 All base DOCX technical rules apply - read the `docx` skill for details on lists, images, hyperlinks, page breaks, and XML editing.

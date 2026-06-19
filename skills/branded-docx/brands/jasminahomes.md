@@ -294,7 +294,15 @@ For luxury printouts that match the digital warmth of this brand:
 
 ## Font Requirements
 
-This brand requires **Poppins** (headings) and **Georgia** (body).
+This brand requires **Poppins** (headings) and **Georgia** (body). Read [`references/font-fidelity.md`](../references/font-fidelity.md) for the full font doctrine; the brand-specific notes follow.
+
+**Georgia on a headless box.** Georgia is a proprietary Microsoft font, absent from Linux containers (CI, the claude.ai sandbox); rendered to PDF there it substitutes to a default serif and the editorial-serif feel is lost. Substitute **Gelasio**, the metric-compatible open replacement (matches Georgia at unitsPerEm 2048, x-height 0.481 em, cap-height 0.693 em, 0.00% advance-width difference, verified 2026-06-18, so pagination is unchanged). Not Lora or another look-alike. One command (instances static cuts, installs, aliases Georgia, fails loud if it cannot):
+
+```bash
+python scripts/setup/font_preflight.py --family Georgia --substitute Gelasio \
+  --source-url "https://raw.githubusercontent.com/google/fonts/main/ofl/gelasio/Gelasio%5Bwght%5D.ttf" \
+  --weights 400,700 --alias
+```
 
 Georgia is built into Windows and macOS. Poppins must be installed:
 
@@ -304,3 +312,5 @@ Georgia is built into Windows and macOS. Poppins must be installed:
 - **Google Docs:** Poppins is available in the Google Docs font picker. Georgia is a default font. Both work natively — no installation needed, and PDF exports render correctly.
 
 If Poppins is missing, Word silently falls back to Arial. The document opens fine but headings lose their character.
+
+**Before sending a jasminahomes document outside your machine,** embed the fonts or export to PDF (PDF embeds and subsets automatically) so a recipient without Poppins or Georgia still sees the design. See the font-fidelity reference, "Distribution".
