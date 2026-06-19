@@ -296,7 +296,7 @@ For luxury printouts that match the digital warmth of this brand:
 
 This brand requires **Poppins** (headings) and **Georgia** (body). Read [`references/font-fidelity.md`](../references/font-fidelity.md) for the full font doctrine; the brand-specific notes follow.
 
-**Georgia on a headless box.** Georgia is a proprietary Microsoft font, absent from Linux containers (CI, the claude.ai sandbox); rendered to PDF there it substitutes to a default serif and the editorial-serif feel is lost. Substitute **Gelasio**, the metric-compatible open replacement (matches Georgia at unitsPerEm 2048, x-height 0.481 em, cap-height 0.693 em, 0.00% advance-width difference, verified 2026-06-18, so pagination is unchanged). Not Lora or another look-alike. One command (instances static cuts, installs, aliases Georgia, fails loud if it cannot):
+**Georgia on a headless box.** Georgia is a proprietary Microsoft font, absent from Linux containers (CI, the claude.ai sandbox); rendered to PDF there it substitutes to a default serif and the editorial-serif feel is lost. Substitute **Gelasio**, the metric-compatible open replacement (Georgia's metrics, so pagination is unchanged; measurements in the [font-fidelity reference](../references/font-fidelity.md)). Not Lora or another look-alike. One command (instances static cuts, installs, aliases Georgia, fails loud if it cannot):
 
 ```bash
 python scripts/setup/font_preflight.py --family Georgia --substitute Gelasio \

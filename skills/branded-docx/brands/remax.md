@@ -316,7 +316,7 @@ The `heading` token defaults to `"Metropolis"` for Word workflows. To generate f
 **Montserrat** (Google Docs):
 
 - Already available in the Google Docs font picker — just select "Montserrat".
-- For local preview in Word: download from [Google Fonts](https://fonts.google.com/specimen/Montserrat). Install ONLY the static .ttf files from the `static/` folder (Regular, Bold, Italic, BoldItalic) — do NOT install the variable font files, as they cause Word's PDF export to pick the wrong weight. This is the general variable-font trap described in [`references/font-fidelity.md`](../references/font-fidelity.md); the doctrine there covers instancing static cuts and embedding for any brand.
+- For local preview in Word: download from [Google Fonts](https://fonts.google.com/specimen/Montserrat). Install ONLY the static .ttf files from the `static/` folder (Regular, Bold, Italic, BoldItalic) - do NOT install the variable font files, as they cause Word's PDF export to pick the wrong weight. This is the general variable-font trap described in [`references/font-fidelity.md`](../references/font-fidelity.md); the doctrine there covers instancing static cuts and embedding for any brand.
 
 **Arial** (body): Built into Windows, macOS, and most Linux distributions. No installation needed.
 

@@ -17,11 +17,21 @@ Examples:
   python font_preflight.py --family Gelasio --source-url <url> --out-dir /tmp/f --no-install
 """
 import argparse, os, platform, shutil, subprocess, sys, tempfile, urllib.request
+from xml.sax.saxutils import escape as xml_escape
+
+SFNT_MAGIC = (b"\x00\x01\x00\x00", b"OTTO", b"true", b"ttcf", b"wOFF", b"wOF2")
 
 def log(msg): print(f"[font-preflight] {msg}", file=sys.stderr)
 def die(msg, code=2):
     log(f"FAIL: {msg}")
     sys.exit(code)
+
+def safe_name(value, what):
+    """A font family name, not a path. Reject separators / traversal so it cannot redirect a write."""
+    if value is None:
+        return
+    if "/" in value or "\\" in value or os.sep in value or (os.altsep and os.altsep in value) or ".." in value:
+        die(f"invalid {what} {value!r}: expected a font family name, not a path")
 
 def font_dirs():
     sys_name = platform.system()
@@ -33,18 +43,26 @@ def font_dirs():
     return [os.path.expanduser("~/.fonts"), os.path.expanduser("~/.local/share/fonts"),
             "/usr/share/fonts", "/usr/local/share/fonts"]
 
-def resolves_static(family):
-    """True only if `family` is available as a non-variable (static) face on this machine."""
+def resolves_static(family, expect=None):
+    """True only if a query for `family` resolves to a usable NON-variable (static) face.
+
+    `expect` covers the Linux alias case: after aliasing Georgia->Gelasio, a query for Georgia
+    must resolve to Gelasio, so we check the resolved family equals `expect`, not `family`.
+    """
+    want = expect or family
     from fontTools.ttLib import TTFont
-    # Linux: trust fontconfig first (matches what LibreOffice will do).
+    # Linux: fontconfig is authoritative (it is what LibreOffice consults). fc-match always
+    # returns its BEST match and never fails, so an absent family yields a substitute with a
+    # DIFFERENT family name; require an exact family-name match, and confirm both weights.
     if platform.system() == "Linux" and shutil.which("fc-match"):
-        out = subprocess.run(["fc-match", "-f", "%{family}|%{variable}", f"{family}:weight=bold"],
-                             capture_output=True, text=True).stdout
-        fam, _, var = out.partition("|")
-        if family.lower() not in fam.lower():
-            return False
-        return var.strip().lower() not in ("true", "1")
-    # Windows/macOS: scan font dirs for a static face whose family name matches.
+        def ok(weight):
+            out = subprocess.run(["fc-match", "-f", "%{family}|%{variable}", f"{family}:weight={weight}"],
+                                 capture_output=True, text=True).stdout
+            fam, _, var = out.partition("|")
+            fam_ok = any(want.strip().lower() == part.strip().lower() for part in fam.split(","))
+            return fam_ok and var.strip().lower() not in ("true", "1")
+        return ok("regular") and ok("bold")
+    # Windows/macOS: scan font dirs for a static face whose family name matches `want`.
     for d in font_dirs():
         if not os.path.isdir(d):
             continue
@@ -54,7 +72,7 @@ def resolves_static(family):
             try:
                 f = TTFont(os.path.join(d, fn), fontNumber=0, lazy=True)
                 names = {f["name"].getDebugName(1) or "", f["name"].getDebugName(16) or ""}
-                if any(family.lower() == (n or "").lower() for n in names) and "fvar" not in f:
+                if any(want.lower() == (n or "").lower() for n in names) and "fvar" not in f:
                     return True
             except Exception:
                 continue
@@ -74,6 +92,8 @@ def instance_static(src, family, weights, out_dir):
         if "fvar" not in f:
             die(f"{src} is not a variable font; cannot instance weight {w}")
         instantiateVariableFont(f, {"wght": w}, inplace=True)
+        if "fvar" in f:  # pinning all axes must yield a genuinely static font
+            die(f"instancing left an 'fvar' table in the {family} {sub} cut; not static")
         n = f["name"]
         for nid, val in [(1, family), (2, sub), (4, f"{family} {sub}"), (6, f"{family}-{sub}"),
                          (16, family), (17, sub)]:
@@ -96,24 +116,33 @@ def install(paths):
         subprocess.run(["fc-cache", "-f"], check=False)
 
 def write_alias(family, substitute):
+    """Map family->substitute via fontconfig (Linux only). Returns True if an alias was written."""
     if platform.system() != "Linux":
-        log(f"alias is Linux-only; on this OS install {substitute} so {family} substitutes naturally")
-        return
+        log(f"alias is Linux-only; on this OS install {substitute} or set the brand font to it directly")
+        return False
     conf_dir = os.path.expanduser("~/.config/fontconfig/conf.d")
     os.makedirs(conf_dir, exist_ok=True)
     path = os.path.join(conf_dir, f"99-{family.lower()}-{substitute.lower()}.conf")
     with open(path, "w") as fh:
         fh.write('<?xml version="1.0"?>\n<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n<fontconfig>\n'
-                 f'  <alias binding="strong"><family>{family}</family>'
-                 f'<prefer><family>{substitute}</family></prefer></alias>\n</fontconfig>\n')
+                 f'  <alias binding="strong"><family>{xml_escape(family)}</family>'
+                 f'<prefer><family>{xml_escape(substitute)}</family></prefer></alias>\n</fontconfig>\n')
     if shutil.which("fc-cache"):
         subprocess.run(["fc-cache", "-f"], check=False)
     log(f"wrote alias {family} -> {substitute} ({path})")
+    return True
 
 def fetch(url):
     fd, tmp = tempfile.mkstemp(suffix=".ttf"); os.close(fd)
     log(f"downloading {url}")
-    urllib.request.urlretrieve(url, tmp)
+    try:
+        urllib.request.urlretrieve(url, tmp)
+    except Exception as e:
+        die(f"could not download {url}: {e}")
+    with open(tmp, "rb") as fh:
+        magic = fh.read(4)
+    if magic not in SFNT_MAGIC:
+        die(f"downloaded file from {url} is not a font (leading bytes {magic!r}); an error page, perhaps?")
     return tmp
 
 def main():
@@ -123,16 +152,21 @@ def main():
     ap.add_argument("--source-url", help="URL of the variable font to instance (the family or its substitute)")
     ap.add_argument("--source-file", help="Local variable font to instance instead of downloading")
     ap.add_argument("--weights", default="400,700", help="Comma-separated weights to instance (default 400,700)")
-    ap.add_argument("--alias", action="store_true", help="Write a fontconfig alias family->substitute (Linux)")
+    ap.add_argument("--alias", action="store_true", help="Write a fontconfig alias family->substitute (Linux). Requires --substitute.")
     ap.add_argument("--out-dir", help="Where to write instanced cuts (default: a temp dir)")
     ap.add_argument("--no-install", action="store_true", help="Instance only; do not install into the font path")
     args = ap.parse_args()
 
+    safe_name(args.family, "--family")
+    safe_name(args.substitute, "--substitute")
+    if args.alias and not args.substitute:
+        die("--alias requires --substitute (it maps --family to the substitute)")
+
     weights = [int(w) for w in args.weights.split(",") if w.strip()]
     target_family = args.substitute or args.family
 
-    # 1. Already available as static cuts? Then we are done.
-    if resolves_static(args.family) or (args.substitute and resolves_static(args.substitute)):
+    # 1. Declared font already present as a static cut? Then we are done.
+    if resolves_static(args.family):
         log(f"OK: {args.family} resolves to a static cut on this machine; nothing to do.")
         return 0
 
@@ -141,23 +175,32 @@ def main():
         die(f"{args.family} is not available as static cuts and no --source-url/--source-file was given. "
             f"Provide a metric-compatible substitute source (e.g. Gelasio for Georgia) or install the font.")
 
-    src = args.source_file or fetch(args.source_url)
-    out_dir = args.out_dir or tempfile.mkdtemp(prefix="font-preflight-")
-    made = instance_static(src, target_family, weights, out_dir)
+    # 3. Ensure the target's static cuts exist (skip instancing if already installed).
+    if args.substitute and resolves_static(args.substitute):
+        log(f"{target_family} already installed; skipping instancing.")
+    else:
+        src = args.source_file or fetch(args.source_url)
+        out_dir = args.out_dir or tempfile.mkdtemp(prefix="font-preflight-")
+        made = instance_static(src, target_family, weights, out_dir)
+        if args.no_install:
+            log(f"instanced {len(made)} cut(s) into {out_dir} (not installed, --no-install).")
+            return 0
+        install(made)
 
-    if args.no_install:
-        log(f"instanced {len(made)} cut(s) into {out_dir} (not installed, --no-install).")
-        return 0
+    # 4. Alias so the declared family resolves to the substitute (Linux only).
+    alias_written = write_alias(args.family, args.substitute) if (args.substitute and args.alias) else False
 
-    install(made)
-    if args.substitute and args.alias:
-        write_alias(args.family, args.substitute)
-
-    # 3. Verify, and FAIL LOUD if the font still does not resolve.
-    if not (resolves_static(args.family) or resolves_static(target_family)):
-        die(f"after install, neither {args.family} nor {target_family} resolves to a static cut. "
+    # 5. Verify, and FAIL LOUD if the font still does not resolve.
+    if alias_written:
+        ok = resolves_static(args.family, expect=target_family)
+        detail = f"{args.family} (aliased to {target_family})"
+    else:
+        ok = resolves_static(args.family) or resolves_static(target_family)
+        detail = target_family
+    if not ok:
+        die(f"after setup, {detail} does not resolve to a static cut. "
             f"Do not generate: the render would substitute a wrong typeface.")
-    log(f"OK: {target_family} is now installed as static cuts and resolves.")
+    log(f"OK: {detail} is installed as static cuts and resolves.")
     return 0
 
 if __name__ == "__main__":
