@@ -4,17 +4,15 @@
 It fails LOUD (non-zero exit) when a font cannot be made available, so a render never
 silently proceeds with a substituted typeface. See references/font-fidelity.md for the doctrine.
 
-Examples:
-  # Verify the brand font is present as static cuts (exit 0) or fail (non-zero):
-  python font_preflight.py --family Montserrat
+Exit codes: 0 = the font resolves; 2 = it cannot be made available (hard fail);
+3 = static cuts were instanced but need a manual OS install (Windows) before they resolve.
 
-  # Headless substitution: instance static Gelasio for an absent Georgia, install + alias (Linux):
+Examples:
+  python font_preflight.py --family Montserrat
   python font_preflight.py --family Georgia --substitute Gelasio \
       --source-url "https://raw.githubusercontent.com/google/fonts/main/ofl/gelasio/Gelasio%5Bwght%5D.ttf" \
       --weights 400,700 --alias
-
-  # Instance into a directory without installing (for testing / CI):
-  python font_preflight.py --family Gelasio --source-url <url> --out-dir /tmp/f --no-install
+  python font_preflight.py --family Gelasio --source-url <url> --out-dir /tmp/f --no-install  # test/CI
 """
 import argparse, os, platform, shutil, subprocess, sys, tempfile, urllib.request
 from xml.sax.saxutils import escape as xml_escape
@@ -44,7 +42,7 @@ def font_dirs():
             "/usr/share/fonts", "/usr/local/share/fonts"]
 
 def resolves_static(family, expect=None):
-    """True only if a query for `family` resolves to a usable NON-variable (static) face.
+    """True only if a query for `family` resolves to usable STATIC Regular AND Bold cuts.
 
     `expect` covers the Linux alias case: after aliasing Georgia->Gelasio, a query for Georgia
     must resolve to Gelasio, so we check the resolved family equals `expect`, not `family`.
@@ -52,17 +50,24 @@ def resolves_static(family, expect=None):
     want = expect or family
     from fontTools.ttLib import TTFont
     # Linux: fontconfig is authoritative (it is what LibreOffice consults). fc-match always
-    # returns its BEST match and never fails, so an absent family yields a substitute with a
-    # DIFFERENT family name; require an exact family-name match, and confirm both weights.
+    # returns its BEST match and never fails: an absent family yields a substitute with a
+    # different name, and a weight with no real cut is served by the nearest file. So require
+    # an exact family match, a non-variable face, AND that regular and bold resolve to DIFFERENT
+    # files (same file for both => only one weight is really installed).
     if platform.system() == "Linux" and shutil.which("fc-match"):
-        def ok(weight):
-            out = subprocess.run(["fc-match", "-f", "%{family}|%{variable}", f"{family}:weight={weight}"],
+        def face(weight):
+            out = subprocess.run(["fc-match", "-f", "%{family}|%{variable}|%{file}", f"{family}:weight={weight}"],
                                  capture_output=True, text=True).stdout
-            fam, _, var = out.partition("|")
-            fam_ok = any(want.strip().lower() == part.strip().lower() for part in fam.split(","))
-            return fam_ok and var.strip().lower() not in ("true", "1")
-        return ok("regular") and ok("bold")
-    # Windows/macOS: scan font dirs for a static face whose family name matches `want`.
+            parts = (out.split("|") + ["", "", ""])[:3]
+            fam, var, path = parts
+            fam_ok = any(want.strip().lower() == p.strip().lower() for p in fam.split(","))
+            return fam_ok, (var.strip().lower() not in ("true", "1")), path.strip()
+        rfam, rstatic, rfile = face("regular")
+        bfam, bstatic, bfile = face("bold")
+        return rfam and bfam and rstatic and bstatic and rfile and rfile != bfile
+    # Windows/macOS: scan font dirs for static faces named `want`; require both a regular-weight
+    # and a bold-weight cut (a partial install must not pass).
+    found_regular = found_bold = False
     for d in font_dirs():
         if not os.path.isdir(d):
             continue
@@ -71,12 +76,17 @@ def resolves_static(family, expect=None):
                 continue
             try:
                 f = TTFont(os.path.join(d, fn), fontNumber=0, lazy=True)
+                if "fvar" in f:
+                    continue
                 names = {f["name"].getDebugName(1) or "", f["name"].getDebugName(16) or ""}
-                if any(want.lower() == (n or "").lower() for n in names) and "fvar" not in f:
-                    return True
+                if not any(want.lower() == (n or "").lower() for n in names):
+                    continue
+                ws = f["OS/2"].usWeightClass
+                if ws <= 500: found_regular = True
+                if ws >= 600: found_bold = True
             except Exception:
                 continue
-    return False
+    return found_regular and found_bold
 
 def instance_static(src, family, weights, out_dir):
     """Instance static cuts at each weight from a variable font; return list of paths."""
@@ -87,33 +97,45 @@ def instance_static(src, family, weights, out_dir):
     names = {400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold"}
     for w in weights:
         sub = names.get(w, str(w))
-        bold = w >= 700
         f = TTFont(src)
         if "fvar" not in f:
             die(f"{src} is not a variable font; cannot instance weight {w}")
-        instantiateVariableFont(f, {"wght": w}, inplace=True)
-        if "fvar" in f:  # pinning all axes must yield a genuinely static font
+        # Pin wght to the request and every other axis to its default, so a multi-axis font
+        # still produces a fully static instance.
+        location = {a.axisTag: a.defaultValue for a in f["fvar"].axes}
+        location["wght"] = w
+        instantiateVariableFont(f, location, inplace=True)
+        if "fvar" in f:
             die(f"instancing left an 'fvar' table in the {family} {sub} cut; not static")
         n = f["name"]
         for nid, val in [(1, family), (2, sub), (4, f"{family} {sub}"), (6, f"{family}-{sub}"),
                          (16, family), (17, sub)]:
             n.setName(val, nid, 3, 1, 0x409); n.setName(val, nid, 1, 0, 0)
         o, h = f["OS/2"], f["head"]
-        if bold: o.fsSelection = (o.fsSelection & ~0x40) | 0x20; h.macStyle |= 0x01
-        else:    o.fsSelection = (o.fsSelection & ~0x20) | 0x40; h.macStyle &= ~0x01
+        o.usWeightClass = w
+        o.fsSelection &= ~0x60  # clear BOLD (0x20) and REGULAR (0x40)
+        if w == 400:   o.fsSelection |= 0x40; h.macStyle &= ~0x01      # REGULAR
+        elif w >= 700: o.fsSelection |= 0x20; h.macStyle |= 0x01       # BOLD
+        else:          h.macStyle &= ~0x01                              # intermediate: neither bit
         out = os.path.join(out_dir, f"{family}-{sub}.ttf")
         f.save(out); made.append(out)
         log(f"instanced {family} {sub} ({w}) -> {out}")
     return made
 
 def install(paths):
+    """Copy cuts into the user font path. Returns True if the OS auto-registers them (Linux/macOS),
+    False on Windows where an explicit per-user install is required."""
+    sys_name = platform.system()
+    if sys_name == "Windows":
+        return False
     target = font_dirs()[0]
     os.makedirs(target, exist_ok=True)
     for p in paths:
         shutil.copy2(p, os.path.join(target, os.path.basename(p)))
         log(f"installed {os.path.basename(p)} -> {target}")
-    if platform.system() == "Linux" and shutil.which("fc-cache"):
+    if sys_name == "Linux" and shutil.which("fc-cache"):
         subprocess.run(["fc-cache", "-f"], check=False)
+    return True
 
 def write_alias(family, substitute):
     """Map family->substitute via fontconfig (Linux only). Returns True if an alias was written."""
@@ -165,9 +187,9 @@ def main():
     weights = [int(w) for w in args.weights.split(",") if w.strip()]
     target_family = args.substitute or args.family
 
-    # 1. Declared font already present as a static cut? Then we are done.
+    # 1. Declared font already present as static Regular+Bold cuts? Then we are done.
     if resolves_static(args.family):
-        log(f"OK: {args.family} resolves to a static cut on this machine; nothing to do.")
+        log(f"OK: {args.family} resolves to static cuts on this machine; nothing to do.")
         return 0
 
     # 2. Not available. We need a source to make it available, else fail loud.
@@ -185,20 +207,31 @@ def main():
         if args.no_install:
             log(f"instanced {len(made)} cut(s) into {out_dir} (not installed, --no-install).")
             return 0
-        install(made)
+        if not install(made):
+            die(f"instanced {len(made)} static cut(s) of {target_family} in {out_dir}. On Windows, install "
+                f"them now (select the .ttf files, right-click > Install for all users), then re-run this "
+                f"preflight to confirm. Until installed, {args.family} will not render as designed.", code=3)
 
     # 4. Alias so the declared family resolves to the substitute (Linux only).
     alias_written = write_alias(args.family, args.substitute) if (args.substitute and args.alias) else False
 
-    # 5. Verify, and FAIL LOUD if the font still does not resolve.
-    if alias_written:
-        ok = resolves_static(args.family, expect=target_family)
-        detail = f"{args.family} (aliased to {target_family})"
+    # 5. Verify, and FAIL LOUD. In substitute mode the DECLARED family must resolve (via the alias),
+    #    not merely the substitute being installed.
+    if args.substitute:
+        if alias_written:
+            ok = resolves_static(args.family, expect=target_family)
+        else:
+            ok = resolves_static(args.family)  # no alias: the declared family must already resolve
+        detail = f"{args.family} (via {target_family})" if alias_written else args.family
+        if not ok and not alias_written:
+            die(f"{target_family} is installed but {args.family} still does not resolve. On Linux, re-run "
+                f"with --alias to map {args.family} to {target_family}; on Windows/macOS, set the brand "
+                f"font token to {target_family} directly, or install the real {args.family}.")
     else:
-        ok = resolves_static(args.family) or resolves_static(target_family)
-        detail = target_family
+        ok = resolves_static(args.family)
+        detail = args.family
     if not ok:
-        die(f"after setup, {detail} does not resolve to a static cut. "
+        die(f"after setup, {detail} does not resolve to static cuts. "
             f"Do not generate: the render would substitute a wrong typeface.")
     log(f"OK: {detail} is installed as static cuts and resolves.")
     return 0
