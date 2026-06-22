@@ -4,6 +4,8 @@
 branded-docx-workspace/run-results/
 print/
 work/
+branded-pptx-build/
+.playwright-mcp/
 
 # Python bytecode (e.g. from running scripts/setup/font_preflight.py)
 __pycache__/
