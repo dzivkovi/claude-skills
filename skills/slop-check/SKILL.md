@@ -14,6 +14,15 @@ A reviewer that catches the class of error a fact-check and a spell-check both m
 
 Run it as a **logic gate AFTER any factual fact-check** (it assumes the facts were verified elsewhere), on a drafted or already-published piece, before you ship. It is content-agnostic: articles, client briefs, emails, landing copy, READMEs.
 
+## How to invoke
+
+```bash
+/slop-check path/to/article.md            # one file
+/slop-check draft-a.md draft-b.md         # several (fans out, one reviewer each)
+```
+
+Or just ask in plain language ("run a slop check on article.md") - the `description` auto-triggers it. The SKILL is the trigger; there is no separate command file to maintain. Install it at `.claude/skills/slop-check/SKILL.md` in a project, or `~/.claude/skills/` to use it everywhere; on claude.ai, upload the `.zip` from `releases/`.
+
 ## How to run it
 
 Given one or more file paths:
