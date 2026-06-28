@@ -18,6 +18,25 @@ A personal library of portable skill `.zip` files for Claude.ai. Each skill is a
 
 The build script zips each skill folder that contains a `SKILL.md` and outputs `releases/<skill-name>.zip` (skill folder at the archive root, as claude.ai requires).
 
+## Releasing a skill (independent versioning - do all four steps)
+
+This is an **independent-versioning monorepo**: each skill is its own independently-versioned, independently-released package, with its own SemVer and its own release line. Releasing ONE skill never touches the others' versions or releases. When you finish or update a skill, do all four steps - **skipping step 4 is the easy mistake** (the zip lands in `releases/` but nothing appears on the GitHub Releases page the README sends people to):
+
+1. **Bump its SemVer** in `skills/<skill>/SKILL.md` `metadata.version` (MAJOR = breaking, MINOR = new capability, PATCH = fix).
+2. **Build the zip:** `./scripts/build-skills.sh <skill>` -> `releases/<skill>.zip`.
+3. **Commit** the source change + the rebuilt `releases/<skill>.zip` (+ any README/table rows).
+4. **Cut the GitHub Release** (the canonical, browsable, immutable artifact people actually download):
+
+   ```bash
+   gh release create <skill>-v<version> releases/<skill>.zip \
+     --title "<skill> v<version>" \
+     --notes "what changed"
+   ```
+
+**Tag convention: `<skill>-v<version>`** (e.g. `slop-check-v0.1.0`, `branded-pptx-v0.2.0`). The per-skill prefix is what lets one repo carry many independent release lines - it is the mechanism, not decoration. The `releases/` folder is a convenience mirror of the latest zips; the tagged GitHub Release is the versioned distribution.
+
+Worked example (slop-check, 2026-06-28): `0.1.0` in SKILL.md -> `build-skills.sh slop-check` -> commit `releases/slop-check.zip` -> `gh release create slop-check-v0.1.0 releases/slop-check.zip`. The first publish did steps 1-3 but missed step 4, so the Releases page stayed empty until the tag was cut. That gap is why this checklist exists.
+
 ## Skill Folder Convention
 
 Every skill under `skills/<skill-name>/` follows this structure:
@@ -33,6 +52,7 @@ Every skill under `skills/<skill-name>/` follows this structure:
 
 - **branded-docx** — Generates `.docx` files styled with pluggable brand themes. Ships with five brands: **coral** (Anthropic visual identity: Poppins + Georgia, warm red accent), **remax** (RE/MAX Bridge palette: Metropolis + Arial, navy/red), **jasminahomes** (PropTech Luxury hybrid: RE/MAX colors on Coral's dense layout, Poppins + Georgia), **accessible** (high-readability theme for glasses wearers: Arial + Verdana, deep blue palette, brand-neutral - calibrated for presbyopia, not low vision), and **magma** (Magma Inc. house identity from magmainc.ca: Montserrat as the single typeface with hierarchy by weight, Bridge Blue navy signature, two-reds-chosen-by-surface rule). Add new brands by creating a single `.md` file in `brands/`. Extends the base `docx` skill.
 - **branded-pptx** — Generates `.pptx` decks with the same pluggable-brand model, layered on Anthropic's base `pptx` skill. Distils prose onto slide faces and pushes full wording into speaker notes via `addNotes()`. Ships the **magma** brand today (shares Magma's palette with branded-docx so a deck and its document read as one identity; each skill keeps its own `brands/` copy). Currently version 0.2.0, which front-loads a **Preflight** (install the brand font as static Regular/Bold cuts: a bare variable font renders as "Thin" and makes the QA preview lie) and reframes slide QA as a **Definition of Done** (render every slide, fix the one or two overflow defects, declare done only after a clean render). v0.2.0 was the fix for "the same skill produced a rough deck on one machine and a sharp one on another" - the difference was environment, not the templates.
+- **slop-check** — Fresh-eyes logic-and-slop review of prose: catches writing that reads like fine English but is logically, mathematically, or definitionally wrong, plus internal contradictions, drift off the piece's own stated point, and AI tells. NOT a fact-checker - a logic gate to run after the facts are verified, before publishing. One reviewer per file (fans out for many), report-only (never edits). Brand-neutral: reads each project's own `CLAUDE.md`/`AGENTS.md` for house style, so it travels unchanged. Standalone (no base skill). Currently version 0.1.0.
 
 ## Key Architectural Notes
 
