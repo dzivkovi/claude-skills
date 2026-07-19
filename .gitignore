@@ -2,6 +2,7 @@
 # Teaching artifacts (trigger-eval.json, eval_review.html, workspace README)
 # are committed; the raw run dump is not.
 branded-docx-workspace/run-results/
+read-along-workspace/run-results/
 print/
 work/
 branded-pptx-build/

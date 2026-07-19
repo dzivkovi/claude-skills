@@ -1,6 +1,8 @@
 ---
 name: read-along
 description: Guided visual walkthrough of accumulated work (a session, a PR batch, an overnight run) as an interactive storybook page plus live browser demos, with a strict stop-and-go protocol. Use after long or autonomous sessions, before demos, or whenever the operator says they cannot comprehend everything that happened.
+metadata:
+  version: 5.0.0
 ---
 
 # /read-along : the guided storybook walkthrough
@@ -62,6 +64,8 @@ Launch a VISIBLE (headed, never headless) Chrome with CDP, isolated profile, and
 "/c/Program Files/Google/Chrome/Application/chrome.exe" --remote-debugging-port=<PORT> \
   --user-data-dir="$TEMP/chrome-readalong-<PORT>" --no-first-run --window-size=1400,950 "file:///<storybook path>"
 ```
+
+The command above is the tested Windows / Git-Bash form - use it verbatim on Windows. On other operating systems only the Chrome binary and the temp dir change; every flag stays identical: on macOS the binary is `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` and the profile dir is `"${TMPDIR:-/tmp}/chrome-readalong-<PORT>"`; on Linux the binary is `google-chrome` (or `google-chrome-stable`, usually on PATH) with the same `"${TMPDIR:-/tmp}/chrome-readalong-<PORT>"`. If Chrome is genuinely absent, Chromium, Brave, or Edge accept the same `--remote-debugging-port` flags. Keep it headed and on an isolated profile whatever the binary.
 
 AUDIO NARRATION - the literal read-along (v4, researched): the storybook can carry a built-in voice. The full research and a paste-ready ~110-line widget live in audio-player.md BESIDE THIS FILE - read it when adding the player. The essentials: Web Speech API (speechSynthesis) as primary - zero bytes, offline via local OS voices, hidden in print by one @media rule; a top-right docked pill (play/pause, prev/next SECTION, speed cycle 0.8x-2x, minimize, "Stop N of M" progress - sections, never seconds); each .stop is the read-and-skip unit with tables/code/demo boxes replaced by one-line spoken stubs; the reading section is highlighted and scrolled into view (the page follows the voice); sentence-chunking under 200 chars plus a 14s pause/resume keep-alive defeats Chrome's 15-second cutoff; graceful degradation hides the pill when no engine exists. Honest tradeoff to state, not hide: offline local voices sound robotic next to the network "natural" voices. Pre-generated MP3 narration is the opt-in alternative (better voice, ~2.4MB per 10 minutes embedded, goes stale on edits). The player is ADDITIVE: the page must remain fully readable, printable, and demo-able with the pill closed.
 

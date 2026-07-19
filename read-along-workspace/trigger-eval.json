@@ -1,0 +1,22 @@
+[
+  {"query": "I let claude run overnight on the invoice-parser repo and woke up to 14 merged PRs. I have no idea what actually happened - walk me through it?", "should_trigger": true},
+  {"query": "I'm demoing what shipped this sprint to my team tomorrow. Give me a guided tour of the last 20 merged PRs, most important first, actually driving the app so they see it work.", "should_trigger": true},
+  {"query": "do a read-along of last night's work", "should_trigger": true},
+  {"query": "so much has happened on this branch this week - PRs, issues, work notes everywhere. I can't hold it all in my head. help me understand everything that happened", "should_trigger": true},
+  {"query": "can you make me one of those storybook walkthroughs of the ask-your-binder changes since v2.1, with the live browser demo next to it?", "should_trigger": true},
+  {"query": "/read-along PRs 40-60", "should_trigger": true},
+  {"query": "catch me up on everything the agent did while i was asleep, and actually show me the app doing it, dont just list commits", "should_trigger": true},
+  {"query": "i cloned this open-source repo and want to understand how it evolved - give me a guided tour of its major turning points, the releases and big PRs, like an interactive walkthrough", "should_trigger": true},
+  {"query": "before I sign off on this overnight run I want a walkthrough that also surfaces anything the agent needs a decision from me on - it tends to bury those", "should_trigger": true},
+  {"query": "give me the guided walkthrough thing you did last time, for this session's work", "should_trigger": true},
+  {"query": "can you review PR #42 for bugs before I merge it?", "should_trigger": false},
+  {"query": "give me a one-line summary of each merged PR this week", "should_trigger": false},
+  {"query": "open chrome, fill out the signup form on example.com, and screenshot it", "should_trigger": false},
+  {"query": "turn my sprint summary into a polished slide deck for the demo tomorrow", "should_trigger": false},
+  {"query": "help me write a children's storybook about a robot who learns to paint", "should_trigger": false},
+  {"query": "the overnight run left 3 failing tests on main - figure out why and fix them", "should_trigger": false},
+  {"query": "I'm new to this repo - analyze the architecture and show me how the components relate", "should_trigger": false},
+  {"query": "write a good PR description for the changes on my current branch", "should_trigger": false},
+  {"query": "implement issue #17 using TDD", "should_trigger": false},
+  {"query": "make a podcast of this repo's docs I can listen to on my commute", "should_trigger": false}
+]
