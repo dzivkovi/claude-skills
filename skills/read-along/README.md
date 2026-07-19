@@ -59,3 +59,15 @@ The pattern worth stealing is not any single rule. It is that a skill improved f
 - The strict parking line makes divergence safe: you can wander because the tour is guaranteed to land back on its feet.
 - The decisions sweep converts "you asked me things somewhere and I never saw them" into one highlighted list.
 - Side quests are banked in durable artifacts before the story resumes, so the tour itself leaves the project better than it found it.
+
+## Design decisions (the roads not taken)
+
+The section above is what to keep. This one is the forks: places where there was a real alternative, and the choice was deliberate. These are the parts worth stealing when you build your own reading, tour, or narration surfaces, because the reasoning outlives this particular skill.
+
+**The audio playhead resumes where it paused, not where your eyes drifted.** When the storybook narrates itself, the voice and the reader are two independent cursors: where the voice is, and where you are looking. Passive browsing (scrolling, glancing, selecting text) must never move the voice, or every glance ahead would silently destroy your listening place. So pausing and reading around the page leaves the playhead untouched, and resume picks up the paused thought. This is the model Kindle immersion reading, Audible, and Speechify all converged on: browsing is free, and the voice only relocates on an explicit gesture. It is also why clicking story text is deliberately inert (an earlier version wired a bare click to "read from here," which was indistinguishable from clicking to read and hijacked the page). If a "read from here" affordance is ever wanted, it must be an unmistakable gesture (a hover chip, a double-click), never a plain click.
+
+A few smaller forks, same spirit:
+
+- **Voice engine: local Web Speech by default, baked MP3 only on request.** The default is the zero-byte, offline, slightly robotic browser voice, because it keeps the file self-contained and always current. The premium pre-generated voice is opt-in, for when the storybook is a shareable keepsake and a few MB of bloat plus staleness-on-edit is an acceptable trade. Good-enough-and-free by default; premium as a conscious upgrade.
+- **The story lives in a plain local HTML file, not a Claude artifact by default.** An artifact is minted only when the surface must outlive the session or reach someone with no repo access. Restraint against over-producing a surface a plain file would serve.
+- **Advance is manual ("say go"), never automatic.** Auto-advance would race ahead of comprehension; the manual bell is what makes wandering safe, because convergence is guaranteed. Any guided experience that welcomes interruption needs this property.

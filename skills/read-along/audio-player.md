@@ -63,7 +63,7 @@ From Substack (redesigned podcast player, July 2026: speed control in-player, of
 - A small FLOATING pill/bar, not inline-blocking. Substack and CastReader use a persistent floating player; the operator's spec docks it TOP-RIGHT (good: out of the reading column, out of the way of the sticky stop-nav which is usually top-left/top).
 - Expected controls, left to right: play/pause (primary), skip back / skip forward, speed (a cycling chip like "1x" -> "1.25x"), and a minimize/dismiss. Volume is optional for speech and can be dropped.
 - Progress: for a section-based unit, show "Stop N of M" plus a thin segmented or fractional bar, NOT a seconds timeline (there is no reliable total duration for live TTS, and the operator explicitly wants section granularity). CastReader/ResponsiveVoice both highlight the active block and auto-scroll it into view ("the page follows the voice") - that read-along property is the thing users love most.
-- Click-to-jump: clicking a section to start there is a strongly expected affordance (ResponsiveVoice, CastReader); cheap to add since each section already has an id.
+- Click-to-jump: clicking a section to start there is a common affordance elsewhere (ResponsiveVoice, CastReader), but for THIS page it is deliberately NOT implemented (v5.0.1). The reading surface is where the operator reads, selects, and scrolls; wiring clicks to playback made ordinary reading resume the voice and felt like the whole page was a resume button. Keep all playback control on the pill; navigate sections with prev/next.
 - Skip semantics: jump at BLOCK boundaries, not mid-sentence (ResponsiveVoice makes this explicit as a v1 correctness choice) - which is exactly the operator's "skip by section" requirement, so we cancel and restart at the next section rather than seeking within audio.
 - Minimize: collapse to just a play/pause dot in the corner; expand on hover/click. Substack keeps a mini-player; the operator wants a minimize toggle.
 
@@ -180,10 +180,10 @@ Design decisions mapped to the page:
     this.textContent=RATES[ri]+'x';
     if(playing){ deliberateCancel(); speak(lastChar); } };  // resume at the last word, new speed
   document.getElementById('rd-min').onclick=function(){ R.dataset.min=R.dataset.min==='1'?'0':'1'; };
-  document.querySelectorAll('.stop').forEach(function(sec){ sec.addEventListener('click',function(e){
-    if(e.target.closest('a,button')) return;                // click a section to start there
-    if(!queue.length) build(); var idx=queue.findIndex(function(q){return q.el===sec;});
-    if(idx>=0){ qi=idx; lastChar=0; play(); } }); });
+  // The reading area is intentionally NOT a player control (v5.0.1). Clicking, selecting, or
+  // scrolling-then-clicking story text must never start or stop the voice - an earlier
+  // click-a-section-to-play affordance hijacked ordinary reading and felt like the whole page
+  // was a resume button. All playback control now lives on the pill; use prev/next to change section.
   window.addEventListener('beforeunload',function(){ synth.cancel(); });          // no orphan audio
 })();
 </script>

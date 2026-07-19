@@ -2,12 +2,12 @@
 name: read-along
 description: Guided visual walkthrough of accumulated work (a session, a PR batch, an overnight run) as an interactive storybook page plus live browser demos, with a strict stop-and-go protocol. Use after long or autonomous sessions, before demos, or whenever the operator says they cannot comprehend everything that happened.
 metadata:
-  version: 5.0.0
+  version: 5.0.1
 ---
 
 # /read-along : the guided storybook walkthrough
 
-Version 5 (2026-07-18). Prior versions preserved beside this file (v1.md through v4.md). v2: port safety, artifact demos, in-tour honesty, keepsake print. v3: demo-prep bound, renderer aim, fatigue adaptation, verbatim transcript export. v4: the export menu, archaeology and divergence scope modes, audio narration, narrate-only mode. v5 (all export refinements, operator-driven): exports land in the operator's Downloads folder by default with the destination path ALWAYS named in the confirmation; the Markdown twin as the post-processing substrate; the black-on-white print palette; export discoverability in the first parking line.
+Version 5 (2026-07-18). Prior versions preserved beside this file (v1.md through v4.md). v2: port safety, artifact demos, in-tour honesty, keepsake print. v3: demo-prep bound, renderer aim, fatigue adaptation, verbatim transcript export. v4: the export menu, archaeology and divergence scope modes, audio narration, narrate-only mode. v5 (all export refinements, operator-driven): exports land in the operator's Downloads folder by default with the destination path ALWAYS named in the confirmation; the Markdown twin as the post-processing substrate; the black-on-white print palette; export discoverability in the first parking line. v5.0.1 (2026-07-19): the in-page audio player no longer treats the reading area as a play control - clicking, selecting, or scrolling story text never starts or stops the voice; all playback lives on the pill, and resume picks up where it paused (the two-cursors rule, see audio-player.md and the README design notes). Also: cross-platform Chrome launch (Windows form primary, macOS/Linux equivalents noted).
 
 The operator's framing: the childhood read-along record book. A storybook page they read, live pictures that move (the real product driven in a real browser), a bell that tells them when to turn the page, and a host who welcomes interruptions and always lands the story back on its feet. Target 5 to 15 minutes of reading: 5 to 9 stops, most important first. Mark Twain rule: a short walkthrough takes MORE contemplation than a long one - rank hard, cut hard.
 
