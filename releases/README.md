@@ -9,6 +9,7 @@ Download a ready-to-use `.zip` and upload it to Claude. No coding required.
 | **branded-docx** | [branded-docx.zip](./branded-docx.zip) | Branded Word documents (Magma, Coral, RE/MAX, Jasmina Homes, Accessible themes) |
 | **branded-pptx** | [branded-pptx.zip](./branded-pptx.zip) | Branded PowerPoint decks (Magma theme) |
 | **slop-check** | [slop-check.zip](./slop-check.zip) | Fresh-eyes logic-and-slop review of prose (catches true-but-broken writing, contradictions, AI tells). Not a fact-checker. |
+| **read-along** | [read-along.zip](./read-along.zip) | Guided storybook tour of an autonomous coding session, driven in a real browser. A **Claude Code** skill: unzip into `~/.claude/skills/`, do not upload to claude.ai (see below). |
 
 ## Installation
 

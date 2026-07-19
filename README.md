@@ -2,7 +2,7 @@
 
 Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
-Each skill is a portable `.zip` file that you upload once to Claude's settings and it permanently changes how Claude behaves - no prompting, no reminding, no repeating yourself.
+Two kinds of skill live here. Most are **claude.ai capability skills**: a portable `.zip` you upload once to Claude's settings, after which Claude produces the styled output on its own, with no prompting or reminding. One, [read-along](./skills/read-along/), is a **Claude Code workflow skill**: it orchestrates your local machine (your repo, your `gh` history, a real browser it drives) to give you a guided tour of work an AI already did. Different species, same library. The distinction is spelled out under [Skills in this repo](#skills-in-this-repo) so the workflow skill does not get read as just another document styler.
 
 ---
 
@@ -33,6 +33,18 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 ---
 
 ## Skills in this repo
+
+They fall into two groups: one Claude Code workflow skill that drives your machine, and a set of claude.ai capability skills you upload and forget.
+
+### Claude Code workflow skill
+
+**[read-along](./skills/read-along/)** turns the morning after a long or autonomous coding session into a guided storybook tour. It gathers the merged PRs, issues, and work notes since a scope you name, writes a self-contained HTML storybook that ranks everything most-important-first, then opens a real browser and drives the live product next to the page while you read, one stop at a time, on a strict "say go to turn the page" protocol. It exists because autonomous agents do more than you asked (they find and fix problems along the way), and comprehending that surplus by hand is the real overnight cost.
+
+This is the most developed skill in the library: it was born during an actual tour and hardened through five versions in a single day, across two different projects, each real run turning a failure into the next version's guardrail. It also installs differently from everything below. Because it needs your repo, your `gh` history, and a real browser, you place its folder under Claude Code rather than uploading it to claude.ai. Its [own README](./skills/read-along/) covers the scope modes (own-work, archaeology, divergence), the in-page audio narration, install, and the full evolution story.
+
+### claude.ai capability skills
+
+Upload the `.zip` under Settings, then Claude produces the styled output on its own.
 
 | Skill | What it does | Trigger phrases |
 |-------|-------------|-----------------|
@@ -77,6 +89,12 @@ claude-skills/
         magma-logo-dark.png             # Logo lockup for navy bookend slides
         magma-logo-white.png            # Logo lockup for light slides
         magma-logo-black.png            # Mono logo variant
+    read-along/                       # Skill: guided storybook tour of accumulated work (Claude Code)
+      SKILL.md                          # The tour engine: gather, storybook, browser, stop-and-go protocol
+      audio-player.md                   # Reference doc: the in-page Web Speech narration widget + research
+      README.md                         # What it is, scope modes, install, the five-versions-in-a-day story
+    slop-check/                       # Skill: fresh-eyes logic-and-slop review of prose
+      SKILL.md                          # Standalone reviewer; reads each project's own house style
   releases/
     branded-docx.zip                  # Ready-to-upload build (folder at zip root)
     branded-pptx.zip                  # Ready-to-upload build (folder at zip root)
@@ -93,7 +111,7 @@ Each skill follows the same folder convention:
 
 ## Installing a skill
 
-No coding required - this is a two-minute upload:
+For the claude.ai capability skills (`branded-docx`, `branded-pptx`, `slop-check`), no coding is required - this is a two-minute upload:
 
 1. Download the `.zip` file from the [Releases](../../releases) page (or the [`releases/`](./releases/) folder)
 2. In [claude.ai](https://claude.ai), open **Settings** and find **Skills** (listed under Capabilities, or Customize, depending on your plan)
@@ -101,6 +119,15 @@ No coding required - this is a two-minute upload:
 4. Done - the skill is active in all future conversations
 
 That is the whole process for most people. The developer requirements below only matter if you run the skills locally in Claude Code rather than on claude.ai.
+
+### Installing read-along (Claude Code, not an upload)
+
+`read-along` is a workflow skill, so it goes where your repos and browser live rather than into claude.ai Settings. Unzip [`releases/read-along.zip`](./releases/) (or copy the `skills/read-along/` folder) into either location:
+
+- `~/.claude/skills/read-along/` - available in every project
+- `<your repo>/.claude/skills/read-along/` - that project only
+
+Then open a Claude Code session on the repo you want toured and say `/read-along`. It works best with `gh` authenticated and a browser MCP wired to a CDP-enabled Chrome; without the browser it falls back to narrate-only mode and you click under its direction. Full details are in its [README](./skills/read-along/).
 
 ### First-time setup (local / Claude Code only)
 
