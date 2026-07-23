@@ -35,6 +35,8 @@ This is an **independent-versioning monorepo**: each skill is its own independen
 
 **Tag convention: `<skill>-v<version>`** (e.g. `slop-check-v0.1.0`, `branded-pptx-v0.2.0`). The per-skill prefix is what lets one repo carry many independent release lines - it is the mechanism, not decoration. The `releases/` folder is a convenience mirror of the latest zips; the tagged GitHub Release is the versioned distribution.
 
+**When a release adds or removes a skill, also refresh the GitHub About description** (`gh repo edit --description "..."`, 350-char cap). It is the one piece of repo prose with no build step and no reviewer, so it silently goes stale: it named only branded-docx/branded-pptx/slop-check for weeks after read-along and markdown-to-epub shipped. Patch releases of an existing skill do not need it; roster changes do. Leave the repo topics alone - they carry the search discoverability, which is also why the repo keeps its generic `claude-skills` name.
+
 Worked example (slop-check, 2026-06-28): `0.1.0` in SKILL.md -> `build-skills.sh slop-check` -> commit `releases/slop-check.zip` -> `gh release create slop-check-v0.1.0 releases/slop-check.zip`. The first publish did steps 1-3 but missed step 4, so the Releases page stayed empty until the tag was cut. That gap is why this checklist exists.
 
 ## Skill Folder Convention

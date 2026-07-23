@@ -1,4 +1,4 @@
-# claude-skills
+# Claude Skills
 
 Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
