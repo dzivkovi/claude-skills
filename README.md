@@ -2,7 +2,7 @@
 
 Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
-Two kinds of skill live here. Most are **claude.ai capability skills**: a portable `.zip` you upload once to Claude's settings, after which Claude produces the styled output on its own, with no prompting or reminding. One, [read-along](./skills/read-along/), is a **Claude Code workflow skill**: it orchestrates your local machine (your repo, your `gh` history, a real browser it drives) to give you a guided tour of work an AI already did. Different species, same library. The distinction is spelled out under [Skills in this repo](#skills-in-this-repo) so the workflow skill does not get read as just another document styler.
+Two kinds of skill live here. Most are **claude.ai capability skills**: a portable `.zip` you upload once to Claude's settings, after which Claude produces the styled output on its own, with no prompting or reminding. Two are **Claude Code workflow skills** that orchestrate your local machine: [read-along](./skills/read-along/) drives your repo, `gh` history, and a real browser to give you a guided tour of work an AI already did, and [markdown-to-epub](./skills/markdown-to-epub/) turns Markdown into clickable, listenable EPUBs (via local pandoc) for your Kindle. Different species, same library. The distinction is spelled out under [Skills in this repo](#skills-in-this-repo) so the workflow skills do not get read as just another document styler.
 
 ---
 
@@ -34,13 +34,15 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 ## Skills in this repo
 
-They fall into two groups: one Claude Code workflow skill that drives your machine, and a set of claude.ai capability skills you upload and forget.
+They fall into two groups: two Claude Code workflow skills that drive your machine, and a set of claude.ai capability skills you upload and forget.
 
-### Claude Code workflow skill
+### Claude Code workflow skills
 
 **[read-along](./skills/read-along/)** turns the morning after a long or autonomous coding session into a guided storybook tour. It gathers the merged PRs, issues, and work notes since a scope you name, writes a self-contained HTML storybook that ranks everything most-important-first, then opens a real browser and drives the live product next to the page while you read, one stop at a time, on a strict "say go to turn the page" protocol. It exists because autonomous agents do more than you asked (they find and fix problems along the way), and comprehending that surplus by hand is the real overnight cost.
 
 This is the most developed skill in the library: it was born during an actual tour and hardened through five versions in a single day, across two different projects, each real run turning a failure into the next version's guardrail. It also installs differently from everything below. Because it needs your repo, your `gh` history, and a real browser, you place its folder under Claude Code rather than uploading it to claude.ai. Its [own README](./skills/read-along/) covers the scope modes (own-work, archaeology, divergence), the in-page audio narration, install, and the full evolution story.
+
+**[markdown-to-epub](./skills/markdown-to-epub/)** turns Markdown - a single briefing, or a whole session's worth of research notes - into a clickable, listenable EPUB for the Kindle. It exists because the things worth keeping from a long session are Markdown files that are painful to navigate in a chat UI and impossible to read away from the desk: an EPUB keeps every link live (including timestamped video deep-links that jump to the exact second), reads aloud via text-to-speech, and - when you bundle many files - carries one combined table of contents so a scattered body of knowledge becomes a single book you learn from on the go. Pandoc does the conversion (the one required dependency; a preflight guides its install on any OS); an optional Pillow-drawn cover gives it a real branded spine in the library, dated so successive same-month versions stay distinct. It ships the Magma identity as the default cover and rebrands by swapping one square logo and a couple of colors. Like read-along it drives your local machine, so it lives under Claude Code rather than uploading to claude.ai; unlike read-along, its SKILL.md is self-sufficient, so it needs no separate README.
 
 ### claude.ai capability skills
 
