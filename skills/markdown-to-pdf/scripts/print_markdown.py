@@ -33,11 +33,13 @@ to emit zero /URI link annotations; see the repo issue for the decision record.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
@@ -483,9 +485,13 @@ def render(md_path: Path, out_path: Path, author: str, docversion: str, date_lab
         builder = FlowableBuilder(make_styles(accent), blocks, accent, frame_width)
         builder.feed(html)
 
+        # Build to a temp sibling, then replace. A viewer holding the target open,
+        # or an antivirus scan of a cloud-synced copy, can briefly lock it on
+        # Windows; writing directly would fail after all the rendering work.
+        tmp_out = out_path.with_name(out_path.name + ".tmp")
         header_right = " - ".join(p for p in (docversion, date_label) if p)
         doc = SimpleDocTemplate(
-            str(out_path),
+            str(tmp_out),
             pagesize=letter,
             topMargin=MARGIN_PT + 14,
             bottomMargin=MARGIN_PT,
@@ -495,6 +501,19 @@ def render(md_path: Path, out_path: Path, author: str, docversion: str, date_lab
             author=author or "markdown-to-pdf",
         )
         doc.build(builder.story, canvasmaker=make_numbered_canvas(author, header_right))
+
+    for delay in (0.0, 0.5, 1.0, 2.0):
+        time.sleep(delay)
+        try:
+            os.replace(tmp_out, out_path)
+            return
+        except PermissionError:
+            continue
+    tmp_out.unlink(missing_ok=True)
+    sys.exit(
+        f"Cannot overwrite {out_path}: the file is locked, likely open in a PDF viewer.\n"
+        "Close it and rerun."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
