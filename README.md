@@ -2,7 +2,7 @@
 
 Personal [Claude.ai](https://claude.ai) skill library by [Daniel Zivkovic](https://www.linkedin.com/in/magmainc/).
 
-Two kinds of skill live here. Most are **claude.ai capability skills**: a portable `.zip` you upload once to Claude's settings, after which Claude produces the styled output on its own, with no prompting or reminding. Two are **Claude Code workflow skills** that orchestrate your local machine: [read-along](./skills/read-along/) drives your repo, `gh` history, and a real browser to give you a guided tour of work an AI already did, and [markdown-to-epub](./skills/markdown-to-epub/) turns Markdown into clickable, listenable EPUBs (via local pandoc) for your Kindle. Different species, same library. The distinction is spelled out under [Skills in this repo](#skills-in-this-repo) so the workflow skills do not get read as just another document styler.
+Two kinds of skill live here. Most are **claude.ai capability skills**: a portable `.zip` you upload once to Claude's settings, after which Claude produces the styled output on its own, with no prompting or reminding. Three are **Claude Code workflow skills** that orchestrate your local machine: [read-along](./skills/read-along/) drives your repo, `gh` history, and a real browser to give you a guided tour of work an AI already did, [markdown-to-epub](./skills/markdown-to-epub/) turns Markdown into clickable, listenable EPUBs (via local pandoc) for your Kindle, and [markdown-to-pdf](./skills/markdown-to-pdf/) prints Markdown to plain, internal-grade PDFs with clickable links, real tables, and locally rendered Mermaid diagrams. Different species, same library. The distinction is spelled out under [Skills in this repo](#skills-in-this-repo) so the workflow skills do not get read as just another document styler.
 
 ---
 
@@ -34,7 +34,7 @@ Skills are installed once under **Settings > Capabilities > Skills** and persist
 
 ## Skills in this repo
 
-They fall into two groups: two Claude Code workflow skills that drive your machine, and a set of claude.ai capability skills you upload and forget.
+They fall into two groups: three Claude Code workflow skills that drive your machine, and a set of claude.ai capability skills you upload and forget.
 
 ### Claude Code workflow skills
 
@@ -43,6 +43,8 @@ They fall into two groups: two Claude Code workflow skills that drive your machi
 This is the most developed skill in the library: it was born during an actual tour and hardened through five versions in a single day, across two different projects, each real run turning a failure into the next version's guardrail. It also installs differently from everything below. Because it needs your repo, your `gh` history, and a real browser, you place its folder under Claude Code rather than uploading it to claude.ai. Its [own README](./skills/read-along/) covers the scope modes (own-work, archaeology, divergence), the in-page audio narration, install, and the full evolution story.
 
 **[markdown-to-epub](./skills/markdown-to-epub/)** turns Markdown - a single briefing, or a whole session's worth of research notes - into a clickable, listenable EPUB for the Kindle. It exists because the things worth keeping from a long session are Markdown files that are painful to navigate in a chat UI and impossible to read away from the desk: an EPUB keeps every link live (including timestamped video deep-links that jump to the exact second), reads aloud via text-to-speech, and - when you bundle many files - carries one combined table of contents so a scattered body of knowledge becomes a single book you learn from on the go. Pandoc does the conversion (the one required dependency; a preflight guides its install on any OS); an optional Pillow-drawn cover gives it a real branded spine in the library, dated so successive same-month versions stay distinct. It ships the Magma identity as the default cover and rebrands by swapping one square logo and a couple of colors. Like read-along it drives your local machine, so it lives under Claude Code rather than uploading to claude.ai; unlike read-along, its SKILL.md is self-sufficient, so it needs no separate README.
+
+**[markdown-to-pdf](./skills/markdown-to-pdf/)** prints Markdown as a plain, internal-grade PDF - the working-document sibling of the branded skills, and of markdown-to-epub above (EPUB is the reading format, this is the printing one). It exists because the two obvious conversion routes each fail half the job: browser print pipelines render beautiful tables and Mermaid diagrams but emit PDFs whose links are all dead text (measured: zero /URI annotations out of headless Chrome, and no flag fixes it), while lightweight PDF writers keep links alive but print tables as raw pipe characters. Its single reportlab engine does both halves: every hyperlink stays clickable (including timestamped video deep-links, even inside table cells), pipe tables become real grids with shaded headers, ```mermaid fences render locally via mermaid-cli (no network, no kroki dependency), and every page carries light stamps - Page N of M, version and date, an author contact line in the footer. Deliberately no cover page, no TOC, no brand tokens: that restraint is what lets the output read as an internal working document rather than a consulting artifact. Its SKILL.md is self-sufficient.
 
 ### claude.ai capability skills
 
