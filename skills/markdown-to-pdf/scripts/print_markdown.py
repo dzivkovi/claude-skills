@@ -429,7 +429,7 @@ def make_styles(accent: str):
 # -------------------------------------------------------------- stamping
 
 
-def make_numbered_canvas(footer_center: str, header_right: str):
+def make_numbered_canvas(footer_center: str, header_right: str, footer_left: str = ""):
     """Canvas that stamps Page N of M plus header/footer once totals are known."""
 
     from reportlab.pdfgen import canvas as rl_canvas
@@ -462,6 +462,12 @@ def make_numbered_canvas(footer_center: str, header_right: str):
                 self.drawRightString(width - STAMP_MARGIN_X, height - HEADER_BASELINE_FROM_TOP, header_right)
             if footer_center:
                 self.drawCentredString(width / 2, FOOTER_BASELINE, footer_center)
+            # Source provenance, bottom-left: which file produced this print. A
+            # printed page that outlives the session is otherwise unreorderable
+            # and untraceable back to its markdown. Left-aligned so it can never
+            # collide with the centered contact line on a long path.
+            if footer_left:
+                self.drawString(STAMP_MARGIN_X, FOOTER_BASELINE, footer_left)
 
     return NumberedCanvas
 
@@ -469,7 +475,26 @@ def make_numbered_canvas(footer_center: str, header_right: str):
 # ------------------------------------------------------------------ main
 
 
-def render(md_path: Path, out_path: Path, author: str, docversion: str, date_label: str, accent: str) -> None:
+def source_label(md_path: Path, depth: int = 2) -> str:
+    """Trailing `depth` path components of the source, for the footer stamp.
+
+    Just the basename is often ambiguous across projects that reuse names like
+    notes.md; two components ("operator-brain/2026-08-03-agent-memory.md") name
+    it unambiguously without leaking a full home-directory path onto paper.
+    """
+    parts = md_path.resolve().parts
+    return "/".join(parts[-depth:]) if len(parts) >= depth else md_path.name
+
+
+def render(
+    md_path: Path,
+    out_path: Path,
+    author: str,
+    docversion: str,
+    date_label: str,
+    accent: str,
+    footer_left: str = "",
+) -> None:
     import markdown
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate
@@ -500,7 +525,7 @@ def render(md_path: Path, out_path: Path, author: str, docversion: str, date_lab
             title=md_path.stem,
             author=author or "markdown-to-pdf",
         )
-        doc.build(builder.story, canvasmaker=make_numbered_canvas(author, header_right))
+        doc.build(builder.story, canvasmaker=make_numbered_canvas(author, header_right, footer_left))
 
     for delay in (0.0, 0.5, 1.0, 2.0):
         time.sleep(delay)
@@ -524,6 +549,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--docversion", default="", help="Document version label for the header, e.g. v1.0.3")
     parser.add_argument("--date", default=date.today().isoformat(), help="Header date (default: today)")
     parser.add_argument("--accent", default=DEFAULT_ACCENT, help="Link and h2 color (default: %(default)s)")
+    parser.add_argument(
+        "--source-label",
+        default=None,
+        help="Bottom-left provenance stamp (default: last 2 path components of the source; pass '' to suppress)",
+    )
     args = parser.parse_args(argv)
 
     if not args.source.is_file():
@@ -531,7 +561,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or args.source.with_suffix(".pdf")
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    render(args.source, out, args.author, args.docversion, args.date, args.accent)
+    footer_left = source_label(args.source) if args.source_label is None else args.source_label
+    render(args.source, out, args.author, args.docversion, args.date, args.accent, footer_left)
     print(f"OK: {out}")
     return 0
 
