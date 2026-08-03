@@ -1,8 +1,8 @@
 ---
 name: markdown-to-pdf
-description: "Convert Markdown into a plain, internal-grade PDF with clickable links (including timestamped video deep-links), real tables, locally rendered Mermaid diagrams, and light header/footer stamps (Page N of M, version and date, source filename, author contact line). Use when the user wants to print or share a Markdown doc as a PDF that should read as a working document, not a branded deliverable: briefings, architecture notes, internal memos, work notes, docs with Mermaid diagrams or comparison tables. Triggers: 'markdown to pdf', 'print this markdown', 'make a PDF of this doc/briefing/note', 'PDF with mermaid diagrams', 'render the tables properly in PDF', 'internal PDF, not the branded one', 'plain PDF for the team'. NOT for polished client-facing documents (use branded-docx or brief-creator) and not for e-reader output (use markdown-to-epub, the reading/Kindle sibling)."
+description: "Convert Markdown into a plain, internal-grade PDF with clickable links (including timestamped video deep-links), real tables, locally rendered Mermaid diagrams, and light header/footer stamps chosen by audience preset (Page N of M, version and date, plus either the source filename for your own research prints or your contact line for a deliverable). Use when the user wants to print or share a Markdown doc as a PDF that should read as a working document, not a branded deliverable: briefings, architecture notes, internal memos, work notes, docs with Mermaid diagrams or comparison tables. Triggers: 'markdown to pdf', 'print this markdown', 'make a PDF of this doc/briefing/note', 'PDF with mermaid diagrams', 'render the tables properly in PDF', 'internal PDF, not the branded one', 'plain PDF for the team'. NOT for polished client-facing documents (use branded-docx or brief-creator) and not for e-reader output (use markdown-to-epub, the reading/Kindle sibling)."
 metadata:
-  version: 0.1.1
+  version: 0.2.0
 ---
 
 # markdown-to-pdf
@@ -11,7 +11,7 @@ Turn a Markdown file into a plain, print-grade PDF where every hyperlink stays c
 
 ## Why this exists
 
-Three converters were converged into this one. A reportlab briefing renderer had clickable links but printed tables as raw pipe characters. A headless-Chrome print script had beautiful tables and Mermaid but produced PDFs with zero /URI link annotations (measured; no Chrome flag fixes it). This skill keeps the winning half of each: one reportlab engine with links everywhere (including inside table cells), tables, Mermaid via local mermaid-cli, and the proven header/footer stamp scheme (Page N of M top-left, version and date top-right, source filename bottom-left, author contact centered in the footer).
+Three converters were converged into this one. A reportlab briefing renderer had clickable links but printed tables as raw pipe characters. A headless-Chrome print script had beautiful tables and Mermaid but produced PDFs with zero /URI link annotations (measured; no Chrome flag fixes it). This skill keeps the winning half of each: one reportlab engine with links everywhere (including inside table cells), tables, Mermaid via local mermaid-cli, and the proven header/footer stamp scheme (Page N of M top-left, version and date top-right, and one audience-chosen value centered in the footer: the source filename when printing your own research, your contact when sending a deliverable).
 
 ## Step 0 - dependencies
 
@@ -34,9 +34,10 @@ uv run "<SKILL_DIR>/scripts/print_markdown.py" notes.md --accent "#0b5394"
 | `--docversion` | empty | Version label in the top-right header |
 | `--date` | today | Date shown top-right; pass the document's own date for briefings |
 | `--accent` | `#c96442` | Link and h2 color; `#0b5394` gives a conservative internal-blue look |
-| `--source-label` | last 2 path components of the source | Bottom-left provenance stamp, so a printed page names the markdown it came from; pass `''` to suppress |
+| `--source-label` | last 2 path components of the source | Provenance text, so a printed page names the markdown it came from; pass `''` to suppress |
+| `--stamp-preset` | `research` | Which values get stamped: `research` (footer = source filename), `client` (footer = author contact), `minimal` (page numbers only) |
 
-REBRAND: the two defaults worth changing are `DEFAULT_AUTHOR` and `DEFAULT_ACCENT` at the top of the script, or just pass the flags.
+REBRAND: the defaults worth changing are `DEFAULT_AUTHOR`, `DEFAULT_ACCENT` and `DEFAULT_STAMP_PRESET` at the top of the script, or just pass the flags. `STAMP_PRESETS` beside them maps each preset to its slots if you want a different mix.
 
 ## Verify (do this for link-heavy documents)
 
@@ -54,4 +55,4 @@ A link-bearing document must report a nonzero count. `assets/sample.md` exercise
 
 ## Do not build
 
-The single script is the whole engine. Do NOT add: a cover page, TOC, brand tokens (that is branded-docx territory), a config file, or an HTML intermediate for styling. Header/footer flexibility stays as-is: the three stamp slots are deliberate.
+The single script is the whole engine. Do NOT add: a cover page, TOC, brand tokens (that is branded-docx territory), a config file, or an HTML intermediate for styling. Stamp POSITIONS stay fixed: a preset chooses what is stamped, never where. Do not add per-position flags, a layout string, or a slot DSL - Anthropic's own best-practices doc names "offering too many options" as an anti-pattern and prescribes "a default with an escape hatch," which is what the presets are.

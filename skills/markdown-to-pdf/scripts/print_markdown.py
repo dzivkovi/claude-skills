@@ -48,6 +48,20 @@ from xml.sax.saxutils import escape
 DEFAULT_AUTHOR = "daniel@magmainc.ca"  # rebrand: pass --author or edit this line
 DEFAULT_ACCENT = "#c96442"  # the one color that signals "clickable"
 
+# Who the page is FOR decides what belongs on it, and there are exactly two
+# audiences in practice. Printing your own research, your own address adds
+# nothing and the source path is what lets you reorder a dropped stack and find
+# the markdown again. Sending a deliverable, the reverse: the reader needs to
+# know who sent it and has no use for an internal file path. So the presets
+# differ in one slot only. Positions stay fixed by design (see SKILL.md "Do not
+# build"); a preset chooses WHAT is stamped, never WHERE.
+STAMP_PRESETS = {
+    "research": {"header_left": "page", "header_right": "version-date", "footer_center": "source"},
+    "client": {"header_left": "page", "header_right": "version-date", "footer_center": "author"},
+    "minimal": {"header_left": "page"},  # page numbers only: handouts, appendices
+}
+DEFAULT_STAMP_PRESET = "research"  # the common case is printing your own work
+
 # Stamp geometry in PDF points, ported from the proven internal print script.
 STAMP_MARGIN_X = 43
 HEADER_BASELINE_FROM_TOP = 28
@@ -429,7 +443,13 @@ def make_styles(accent: str):
 # -------------------------------------------------------------- stamping
 
 
-def make_numbered_canvas(footer_center: str, header_right: str, footer_left: str = ""):
+def make_numbered_canvas(slots: dict[str, str], texts: dict[str, str]):
+    """`slots` maps a position name to a value name; `texts` maps a value name to its text.
+
+    Positions are `header_`/`footer_` crossed with `left`/`center`/`right`. The
+    canvas stays dumb: it resolves `page` itself (it is the only value needing
+    the two-pass total) and otherwise just draws whatever text it is handed.
+    """
     """Canvas that stamps Page N of M plus header/footer once totals are known."""
 
     from reportlab.pdfgen import canvas as rl_canvas
@@ -455,19 +475,18 @@ def make_numbered_canvas(footer_center: str, header_right: str, footer_left: str
             width, height = self._pagesize
             self.setFont("Helvetica", 8)
             self.setFillGray(STAMP_GRAY)
-            self.drawString(
-                STAMP_MARGIN_X, height - HEADER_BASELINE_FROM_TOP, f"Page {self._pageNumber} of {total}"
-            )
-            if header_right:
-                self.drawRightString(width - STAMP_MARGIN_X, height - HEADER_BASELINE_FROM_TOP, header_right)
-            if footer_center:
-                self.drawCentredString(width / 2, FOOTER_BASELINE, footer_center)
-            # Source provenance, bottom-left: which file produced this print. A
-            # printed page that outlives the session is otherwise unreorderable
-            # and untraceable back to its markdown. Left-aligned so it can never
-            # collide with the centered contact line on a long path.
-            if footer_left:
-                self.drawString(STAMP_MARGIN_X, FOOTER_BASELINE, footer_left)
+            for position, value in slots.items():
+                text = f"Page {self._pageNumber} of {total}" if value == "page" else texts.get(value, "")
+                if not text:
+                    continue
+                edge, align = position.split("_")
+                y = (height - HEADER_BASELINE_FROM_TOP) if edge == "header" else FOOTER_BASELINE
+                if align == "left":
+                    self.drawString(STAMP_MARGIN_X, y, text)
+                elif align == "right":
+                    self.drawRightString(width - STAMP_MARGIN_X, y, text)
+                else:
+                    self.drawCentredString(width / 2, y, text)
 
     return NumberedCanvas
 
@@ -493,7 +512,8 @@ def render(
     docversion: str,
     date_label: str,
     accent: str,
-    footer_left: str = "",
+    source_stamp: str = "",
+    stamp_preset: str = DEFAULT_STAMP_PRESET,
 ) -> None:
     import markdown
     from reportlab.lib.pagesizes import letter
@@ -514,7 +534,14 @@ def render(
         # or an antivirus scan of a cloud-synced copy, can briefly lock it on
         # Windows; writing directly would fail after all the rendering work.
         tmp_out = out_path.with_name(out_path.name + ".tmp")
-        header_right = " - ".join(p for p in (docversion, date_label) if p)
+        texts = {
+            "version-date": " - ".join(p for p in (docversion, date_label) if p),
+            "date": date_label,
+            "version": docversion,
+            "source": source_stamp,
+            "author": author,
+        }
+        slots = STAMP_PRESETS[stamp_preset]
         doc = SimpleDocTemplate(
             str(tmp_out),
             pagesize=letter,
@@ -525,7 +552,7 @@ def render(
             title=md_path.stem,
             author=author or "markdown-to-pdf",
         )
-        doc.build(builder.story, canvasmaker=make_numbered_canvas(author, header_right, footer_left))
+        doc.build(builder.story, canvasmaker=make_numbered_canvas(slots, texts))
 
     for delay in (0.0, 0.5, 1.0, 2.0):
         time.sleep(delay)
@@ -552,7 +579,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--source-label",
         default=None,
-        help="Bottom-left provenance stamp (default: last 2 path components of the source; pass '' to suppress)",
+        help="Source provenance text (default: last 2 path components of the source; pass '' to suppress)",
+    )
+    parser.add_argument(
+        "--stamp-preset",
+        choices=sorted(STAMP_PRESETS),
+        default=DEFAULT_STAMP_PRESET,
+        help="Which values get stamped (default: %(default)s). research=source filename, client=author contact",
     )
     args = parser.parse_args(argv)
 
@@ -561,8 +594,8 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or args.source.with_suffix(".pdf")
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    footer_left = source_label(args.source) if args.source_label is None else args.source_label
-    render(args.source, out, args.author, args.docversion, args.date, args.accent, footer_left)
+    source_stamp = source_label(args.source) if args.source_label is None else args.source_label
+    render(args.source, out, args.author, args.docversion, args.date, args.accent, source_stamp, args.stamp_preset)
     print(f"OK: {out}")
     return 0
 
