@@ -7,7 +7,7 @@ metadata:
 
 # markdown-to-confluence
 
-Turn a Markdown file into a Confluence Cloud page, with ```mermaid fences rendered locally so they arrive as diagrams rather than as a wall of source. Sibling of `markdown-to-pdf` (print-grade PDF) and `markdown-to-epub` (e-reader); all three render Mermaid through the same local `mmdc` step and differ only in what they do with the result.
+Turn a Markdown file into a Confluence Cloud page, with ```mermaid fences rendered locally so they arrive as diagrams rather than as a wall of source, and with existing local image references resolved so they arrive as pictures rather than as dead links. Sibling of `markdown-to-pdf` (print-grade PDF) and `markdown-to-epub` (e-reader); all three render Mermaid through the same local `mmdc` step and differ only in what they do with the result.
 
 ## Step 0 - the hard dependency
 
@@ -28,9 +28,10 @@ The Atlassian MCP accepts `contentFormat: "markdown"` and converts the body to n
 | Fenced code with a language | A native code macro with the language set | Clean |
 | Lists, blockquotes | The same elements | Clean |
 | `![alt](data:image/png;base64,...)` | A Confluence image node, rendered at full size | Works |
+| `![alt](docs/diagram.png)` (a path that exists on disk) | Sent to Confluence as literal text; there is no filesystem for it to resolve against | **Broken - the gap this skill also closes** |
 | ` ```mermaid ` fence | **A code macro showing the mermaid source, not a diagram** | The gap this skill closes |
 
-So do not reach for pandoc, do not convert to HTML, and do not strip attributes. Send Markdown. The only preprocessing that earns its place is rendering the Mermaid fences, plus lifting the leading H1 out because the page title is a separate argument.
+So do not reach for pandoc, do not convert to HTML, and do not strip attributes. Send Markdown. The preprocessing that earns its place is rendering the Mermaid fences, resolving local image references against the source file, and lifting the leading H1 out because the page title is a separate argument.
 
 ## Step 2 - prepare the body
 
@@ -38,19 +39,21 @@ So do not reach for pandoc, do not convert to HTML, and do not strip attributes.
 uv run scripts/prepare_confluence_markdown.py <source.md> --images placeholders
 ```
 
-The script renders every Mermaid fence to PNG, substitutes an image reference, lifts the leading H1 out as the title, and prints the title, the body size, and the PNG filenames.
+The script renders every Mermaid fence to PNG, resolves existing local image references, substitutes an image reference for each, lifts the leading H1 out as the title, and prints the title, the body size, and the PNG and image filenames.
 
-**Choose the image mode deliberately. It is the one real tradeoff in this skill.**
+**Choose the image mode deliberately. It is the one real tradeoff in this skill.** The same mode governs rendered diagrams and existing local images, so a document that mixes both reads consistently either way.
 
 | Mode | Body size | What it costs |
 | --- | --- | --- |
-| `--images inline` | Grows by about 1.35x the PNG bytes | Nothing manual, but every byte crosses the MCP tool call and therefore the agent's context, at roughly a token per four bytes. The script warns above 60 KB. |
-| `--images placeholders` | Smallest by far | Each diagram becomes a one-line marker naming its PNG, which the author drags into the editor afterwards. |
-| `--images files` | Small | Plain filename references, for a pipeline that uploads the PNGs as attachments over the REST API. |
+| `--images inline` | Grows by about 1.35x the image bytes | Nothing manual, but every byte crosses the MCP tool call and therefore the agent's context, at roughly a token per four bytes. The script warns above 60 KB. |
+| `--images placeholders` | Smallest by far | Each diagram or local image becomes a one-line blockquote naming its file, which the author drags into the editor afterwards. |
+| `--images files` | Small | Plain filename references, for a pipeline that uploads the images as attachments over the REST API. |
 
-A three-diagram architecture document measured 128 KB inline against 9 KB with placeholders. Prefer `inline` for one or two small diagrams or when the page must arrive complete in a single pass; prefer `placeholders` for anything larger.
+A three-diagram architecture document measured 128 KB inline against 9 KB with placeholders. Prefer `inline` for one or two small images or when the page must arrive complete in a single pass; prefer `placeholders` for anything larger.
 
 **The PNGs are written to disk in every mode, including `inline`.** They are always available as a fallback, which matters for the cross-instance workflow below.
+
+**Local image references are resolved against the source file's own directory, not the output directory or the working directory.** `![alt](docs/diagram.png)` inside `notes/page.md` looks for `notes/docs/diagram.png`. `http://`, `https://`, and `data:` sources are left completely untouched, since they already work in a page body without help. Angle-bracket destinations (`![alt](<path with spaces.png>)`, with or without a trailing `"title"`) are supported, because that syntax exists precisely to let a path contain spaces, and are normalized to the plain form either way so an angle-bracket destination cannot corrupt the rendered page. When a referenced file cannot be resolved, the script does not fail the run: it prints a warning naming the unresolved path, leaves a plain (non-angle-bracket) reference in the body so the page still opens cleanly, and counts it as unresolved in the stdout report rather than the resolved count. In `placeholders` and `files` modes, resolved local images are copied next to the output file alongside the rendered PNGs, ready to drag in; `inline` mode embeds them as data URIs and copies nothing.
 
 ## Step 3 - publish
 
@@ -62,7 +65,7 @@ Resolve the target before writing anything:
 
 Then `createConfluencePage` (new) or `updateConfluencePage` (existing, needs `pageId`), with `contentFormat: "markdown"`, the title from step 2, and `status: "draft"` unless the user asked to publish.
 
-Report the page URL from `_links.webui`, prefixed with `_links.base`. When placeholders were used, list the PNG paths still to be dragged in.
+Report the page URL from `_links.webui`, prefixed with `_links.base`. When placeholders were used, list the PNG and image paths still to be dragged in.
 
 ## Limitations worth stating before someone hits them
 
