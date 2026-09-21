@@ -161,6 +161,12 @@ On claude.ai you do not install anything: Claude provisions Node, the generation
 
 ---
 
+## Utility scripts
+
+[`scripts/`](./scripts/) holds tooling that isn't itself a skill - `build-skills.sh` (packages `skills/` into `releases/`) and `chrome-cdp.sh` (starts/checks/kills a Chrome instance for CDP browser automation, and verifies it's actually yours before trusting it). If you're using any browser-driving skill or tool in this repo, [`scripts/README.md`](./scripts/README.md) is worth reading first - it also untangles the four different things confusingly named "chrome" + "cdp" across this ecosystem.
+
+---
+
 ## Sharing skills
 
 The `.zip` file is self-contained. Share it exactly as you would share any file - email, Dropbox, USB, or just point people at the [Releases](../../releases) page. The recipient uploads it to their own Claude settings. No accounts, no marketplace, no dependency on this repo.
