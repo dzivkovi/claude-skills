@@ -8,11 +8,24 @@ Text is Montserrat when available. Defaults are the Magma identity; this is a
 TEMPLATE - rebrand by swapping the logo (--logo / assets/<your-logo>.png) and the
 colors (--bg / --title-color / --accent).
 
+LAYOUT IS MEASURED, NOT FIXED (rewritten 2026-09-19 after a 7-word title produced a
+cover with four separate defects on a Kindle: a 4-line title that pushed the subtitle
+into the accent rule, an author line wider than the canvas clipped at both edges, and
+a subtitle whose trailing month read as a duplicate of the date stamp). Every text
+block now shrinks to fit its box, the bottom block's position is derived from its own
+measured height rather than a hardcoded fraction of the page, and the middle block is
+centered in whatever space is left. A title that cannot fit at the minimum size is
+reported rather than drawn over something else.
+
 Pandoc cannot build an image cover, so this is a distinct asset step, not a
 conversion wrapper. Dependency: Pillow (pip install pillow). The core markdown->epub
 conversion works without it; only covers need it.
 
 Exit codes: 0 = wrote the cover; 2 = Pillow missing (prints install guidance).
+
+Titles: short ones look better and the fitter cannot invent room. Four words or fewer
+is the sweet spot at the default size; put the explanation in --subtitle, which is
+what it is for.
 
 Example:
   python make_cover.py --title "Marketing Skills Mastery" \
@@ -20,7 +33,7 @@ Example:
 Then: pandoc note.md -f markdown+autolink_bare_uris -t epub3 \
         --epub-cover-image=cover.png --css ../epub.css -o note.epub
 """
-import argparse, os, sys
+import argparse, os, re, sys
 
 def note(msg): print(f"[make-cover] {msg}", file=sys.stderr)
 
@@ -54,20 +67,31 @@ def find_font(filename):
                     return os.path.join(root, filename)
     return None
 
+_FONT_CACHE = {}
+
 def load_font(bold, size):
+    key = (bool(bold), int(size))
+    if key in _FONT_CACHE:
+        return _FONT_CACHE[key]
     primary = "Montserrat-Bold.ttf" if bold else "Montserrat-Regular.ttf"
     for candidate in (primary, "arialbd.ttf" if bold else "arial.ttf",
                       "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"):
         p = find_font(candidate)
         if p:
-            return ImageFont.truetype(p, size)
+            f = ImageFont.truetype(p, size)
+            _FONT_CACHE[key] = f
+            return f
     note("Montserrat not found; using Pillow's default face (off-brand). Install Montserrat for the branded look.")
     try:
-        return ImageFont.load_default(size=size)
+        f = ImageFont.load_default(size=size)
     except TypeError:
-        return ImageFont.load_default()
+        f = ImageFont.load_default()
+    _FONT_CACHE[key] = f
+    return f
 
 def wrap(draw, text, font, max_w):
+    """Greedy wrap. A single word wider than the box gets its own line rather than
+    being dropped, so the fitter below sees the overflow and shrinks."""
     lines, cur = [], ""
     for word in text.split():
         trial = (cur + " " + word).strip()
@@ -83,6 +107,38 @@ def line_height(font, gap=1.15):
     asc, desc = font.getmetrics()
     return int((asc + desc) * gap)
 
+def fits(draw, lines, font, max_w):
+    return all(draw.textlength(ln, font=font) <= max_w for ln in lines)
+
+def fit_block(draw, text, bold, start, minimum, max_w, max_lines):
+    """Largest size in [minimum, start] that wraps `text` into at most `max_lines`
+    lines, each inside `max_w`. Returns (font, lines, hit_floor)."""
+    size = int(start)
+    minimum = max(8, int(minimum))
+    while size >= minimum:
+        font = load_font(bold, size)
+        lines = wrap(draw, text, font, max_w)
+        if len(lines) <= max_lines and fits(draw, lines, font, max_w):
+            return font, lines, False
+        size -= 2
+    font = load_font(bold, minimum)
+    return font, wrap(draw, text, font, max_w), True
+
+def fit_one_line(draw, text, bold, start, minimum, max_w):
+    """Largest size that keeps `text` on ONE line inside max_w. The old code never
+    did this, which is how an author credit ended up clipped at both canvas edges."""
+    size = int(start)
+    minimum = max(8, int(minimum))
+    while size >= minimum:
+        font = load_font(bold, size)
+        if draw.textlength(text, font=font) <= max_w:
+            return font, False
+        size -= 2
+    return load_font(bold, minimum), True
+
+def block_height(lines, font):
+    return line_height(font) * len(lines)
+
 def draw_centered(draw, lines, font, y, W, fill):
     lh = line_height(font)
     for ln in lines:
@@ -90,6 +146,21 @@ def draw_centered(draw, lines, font, y, W, fill):
         draw.text(((W - w) / 2, y), ln, font=font, fill=fill)
         y += lh
     return y
+
+_MONTHS = ("january february march april may june july august september october "
+           "november december").split()
+
+def subtitle_repeats_date(subtitle, date):
+    """The 2026-09-19 defect: a caller ended the subtitle with 'September 2026' while
+    the stamp read '2026-09-17', so the cover showed what looked like two dates. Warn,
+    do not edit the caller's text."""
+    if not subtitle:
+        return False
+    tail = subtitle.lower()[-24:]
+    year = date[:4]
+    if year and year in tail and any(m in tail for m in _MONTHS):
+        return True
+    return bool(re.search(r"\b\d{4}-\d{2}-\d{2}\b", subtitle))
 
 def main():
     ap = argparse.ArgumentParser(description="Branded EPUB cover image generator (template; Magma defaults).")
@@ -105,6 +176,11 @@ def main():
     ap.add_argument("--accent", default="#E2412F", help="Accent hex for the rule + date (default Signal Red on navy).")
     ap.add_argument("--width", type=int, default=1600)
     ap.add_argument("--height", type=int, default=2560)
+    ap.add_argument("--title-scale", type=float, default=0.072,
+                    help="Starting title size as a fraction of width. Lowered from 0.085 on "
+                         "2026-09-19; the fitter shrinks from here, so raise it only for very short titles.")
+    ap.add_argument("--title-max-lines", type=int, default=3)
+    ap.add_argument("--subtitle-max-lines", type=int, default=2)
     a = ap.parse_args()
 
     date = a.date
@@ -112,47 +188,96 @@ def main():
         from datetime import date as _date
         date = _date.today().isoformat()
 
+    if subtitle_repeats_date(a.subtitle, date):
+        note("the subtitle appears to carry its own date while --date also stamps one; "
+             "the cover will show both. Drop the date from --subtitle.")
+
     W, H = a.width, a.height
     img = Image.new("RGB", (W, H), a.bg)
     draw = ImageDraw.Draw(img)
     margin = int(W * 0.09)
     max_w = W - 2 * margin
 
-    y = int(H * 0.10)
+    # ---- bottom block first: its height decides where the middle block may end ----
+    author_font, author_floor = fit_one_line(draw, a.author, True, int(W * 0.040), int(W * 0.024), max_w)
+    if author_floor:
+        note(f"author credit is too long to fit on one line even at the minimum size: {a.author!r}")
+    date_font = load_font(False, int(W * 0.032))
+    gap_rule_author = int(H * 0.020)
+    gap_author_date = int(H * 0.004)
+    bottom_h = gap_rule_author + line_height(author_font) + gap_author_date + line_height(date_font)
+    bottom_margin = int(H * 0.055)
+    rule_y = H - bottom_margin - bottom_h
+
+    # ---- middle block: logo + title + subtitle, measured then centered ----
+    top = int(H * 0.085)
+    avail = rule_y - int(H * 0.035) - top
+
+    logo_img, logo_w, logo_h = None, 0, 0
     if a.logo and os.path.isfile(a.logo):
-        logo = Image.open(a.logo).convert("RGBA")
-        lw = int(W * 0.62)
-        lh = int(lw * logo.height / logo.width)
-        logo = logo.resize((lw, lh), Image.LANCZOS)
-        img.paste(logo, ((W - lw) // 2, y), logo)
-        y += lh + int(H * 0.05)
+        logo_img = Image.open(a.logo).convert("RGBA")
+        logo_w = int(W * 0.62)
+        logo_h = int(logo_w * logo_img.height / logo_img.width)
     else:
         note(f"logo not found at {a.logo}; skipping it.")
-        y = int(H * 0.22)
 
-    title_font = load_font(True, int(W * 0.085))
-    y = draw_centered(draw, wrap(draw, a.title, title_font, max_w), title_font, y, W, a.title_color)
+    gap_logo_title = int(H * 0.045)
+    gap_title_sub = int(H * 0.022)
 
-    if a.subtitle:
-        y += int(H * 0.02)
-        sub_font = load_font(False, int(W * 0.038))
-        draw_centered(draw, wrap(draw, a.subtitle, sub_font, max_w), sub_font, y, W, a.subtitle_color)
+    def measure(title_scale, logo_scale):
+        lh = int(logo_h * logo_scale)
+        tf, tl, tfloor = fit_block(draw, a.title, True, int(W * title_scale),
+                                   int(W * 0.040), max_w, a.title_max_lines)
+        total = (lh + gap_logo_title if lh else 0) + block_height(tl, tf)
+        sf = sl = None
+        if a.subtitle:
+            sf, sl, _ = fit_block(draw, a.subtitle, False, int(W * 0.036),
+                                  int(W * 0.024), max_w, a.subtitle_max_lines)
+            total += gap_title_sub + block_height(sl, sf)
+        return total, lh, tf, tl, tfloor, sf, sl
 
-    by = int(H * 0.88)
-    draw.line([(margin, by), (W - margin, by)], fill=a.accent, width=6)
-    author_font = load_font(True, int(W * 0.040))
-    date_font = load_font(False, int(W * 0.034))
-    ay = by + int(H * 0.02)
+    title_scale, logo_scale = a.title_scale, 1.0
+    total, lh, tf, tl, tfloor, sf, sl = measure(title_scale, logo_scale)
+    # Shrink the logo before the type: the wordmark survives scaling better than a
+    # title does, and a cramped title is what made the Kindle cover unreadable.
+    while total > avail and logo_scale > 0.55:
+        logo_scale -= 0.05
+        total, lh, tf, tl, tfloor, sf, sl = measure(title_scale, logo_scale)
+    while total > avail and title_scale > 0.042:
+        title_scale -= 0.004
+        total, lh, tf, tl, tfloor, sf, sl = measure(title_scale, logo_scale)
+
+    if total > avail:
+        note("title and subtitle do not fit even at the minimum sizes; shorten the title "
+             "(four words or fewer is the sweet spot) or move words into --subtitle.")
+    if tfloor:
+        note(f"title hit the minimum size and still wraps past {a.title_max_lines} lines: {a.title!r}")
+
+    y = top + max(0, (avail - total) // 2)
+    if lh and logo_img is not None:
+        lw = int(logo_w * logo_scale)
+        resized = logo_img.resize((lw, lh), Image.LANCZOS)
+        img.paste(resized, ((W - lw) // 2, y), resized)
+        y += lh + gap_logo_title
+    y = draw_centered(draw, tl, tf, y, W, a.title_color)
+    if sl:
+        y += gap_title_sub
+        y = draw_centered(draw, sl, sf, y, W, a.subtitle_color)
+
+    # ---- bottom block ----
+    draw.line([(margin, rule_y), (W - margin, rule_y)], fill=a.accent, width=6)
+    ay = rule_y + gap_rule_author
     w = draw.textlength(a.author, font=author_font)
     draw.text(((W - w) / 2, ay), a.author, font=author_font, fill=a.title_color)
-    ay += line_height(author_font) + int(H * 0.004)
+    ay += line_height(author_font) + gap_author_date
     w = draw.textlength(date, font=date_font)
     draw.text(((W - w) / 2, ay), date, font=date_font, fill=a.accent)
 
     out_dir = os.path.dirname(os.path.abspath(a.out))
     os.makedirs(out_dir, exist_ok=True)
     img.save(a.out)
-    note(f"wrote {a.out} ({W}x{H}) title={a.title!r} date={date}")
+    note(f"wrote {a.out} ({W}x{H}) title={a.title!r} lines={len(tl)} "
+         f"title_px={tf.size} date={date}")
     return 0
 
 if __name__ == "__main__":

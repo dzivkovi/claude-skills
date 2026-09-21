@@ -14,7 +14,7 @@ description: >
   these markdowns into a book", "combine these notes into one ebook", "make me an
   ebook of the artifacts you just created".
 metadata:
-  version: 0.2.0
+  version: 0.3.0
 ---
 
 # markdown-to-epub
@@ -56,6 +56,25 @@ python "<SKILL_DIR>/scripts/make_cover.py" \
   --out "/tmp/cover.png"
 # then add to the pandoc call:  --epub-cover-image="/tmp/cover.png"
 ```
+- **KEEP THE TITLE SHORT. Four words or fewer.** This is the single biggest driver
+  of whether a cover looks composed or cramped, and it is the one thing the fitter
+  cannot solve for you. Put the explanation in `--subtitle`, which is what it is for,
+  and remember the Kindle library sorts on the EPUB's internal title, so a long one
+  is unwieldy there too. Worked example, 2026-09-19: "How Other People's Agents Reach
+  Your Business" (7 words) wrapped to four lines and shoved the subtitle into the
+  accent rule; retitled "How Agents Reach You" with the rest moved into the subtitle,
+  it reads cleanly at a glance.
+- **Do not put a date in the subtitle.** `--date` already stamps one, and the cover
+  then shows what looks like two. The script warns when it detects this.
+- **The author string is a byline, not a bio.** A name plus a short title fits; a name
+  plus three slash-separated roles does not, and the fitter will shrink it to stay
+  inside the margins rather than let it clip.
+- The layout MEASURES before it draws (rewritten 2026-09-19): the title shrinks to fit
+  at most 3 lines, the subtitle 2, the author 1, the bottom block's position comes from
+  its own height, and the middle block is centered in what is left. Overrides if you
+  need them: `--title-scale` (default 0.072 of width), `--title-max-lines`,
+  `--subtitle-max-lines`. If something still does not fit, the script says so on stderr
+  instead of drawing text over text - read the warnings.
 - The DATE is a real ask: it defaults to today (YYYY-MM-DD) and is meant to
   distinguish versions across a month. Pass the document's own date for briefings.
 - Cover is a build intermediate; write it to a temp path, not next to the .epub.
