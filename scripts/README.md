@@ -5,6 +5,7 @@ Repo tooling that isn't itself a skill - things the skills, or the person drivin
 | Script | What it does |
 |---|---|
 | [`build-skills.sh`](./build-skills.sh) | Packages each folder under `skills/` into a `.zip` in `releases/`, ready to upload to claude.ai. |
+| [`check-skill-links.sh`](./check-skill-links.sh) | Reports any skill in `skills/` that is deployed as a plain copy instead of a junction, so edits cannot silently escape version control. |
 | [`chrome-cdp.sh`](./chrome-cdp.sh) | Starts, checks, or kills a Chrome instance dedicated to CDP browser automation, and verifies it's actually *yours* before anything trusts it. |
 
 ## chrome-cdp.sh
