@@ -1,6 +1,6 @@
 ---
 name: setup
-description: "Check whether the Gemini plugin is ready: Python 3.10+, GEMINI_API_KEY, the resolved default model and thinking level, the Gemini CLI version, and whether repo mode is available here. Use for '/gemini:setup', 'is Gemini set up', 'check my Gemini key', 'why does gemini rescue fall back to file mode'. Not for Codex setup (that is /codex:setup)."
+description: "Check whether the Gemini plugin is ready: Python 3.10+, GEMINI_API_KEY, the resolved default model and thinking level, and whether git is available for --repo. Use for '/gemini:setup', 'is Gemini set up', 'check my Gemini key'. Not for Codex setup (that is /codex:setup)."
 argument-hint: "[--model <alias|id>]"
 allowed-tools: Bash
 ---
@@ -23,10 +23,8 @@ If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_revi
 
 ## Reading the result
 
-- Exit 0: ready. The output names the model (`carbon -> <id>, thinking high`), the CLI version, and whether repo mode is available.
-- Exit 1 with `GEMINI_API_KEY is not set`: show the one-line fix exactly as printed. On Windows `setx` only reaches new shells, so the user must restart Claude Code after it.
-- Repo mode is used only by `/gemini:rescue`; `/gemini:review` always uses file mode, so do not say review "can use repo mode".
-- `repo mode: unavailable`: `/gemini:rescue` still works in file mode. Show the reason; offer `npm i -g @google/gemini-cli` only when the CLI is missing.
+- Exit 0: ready. The output names the model (`carbon -> <id>, thinking high`) and whether git is found (needed only for `--repo`).
+- Exit 1 with `GEMINI_API_KEY is not set`: show the one-line fix exactly as printed. On Windows `setx` only reaches new shells, so the user must restart Claude Code after it. The key is read from the environment on every run and never stored or printed.
 - Exit 2: a usage error, or Python could not open the script (recompute the path from this skill's base directory). Exit 5: the `--model` alias matched nothing; show the available list it printed.
 
 Say which interpreter was used (`$PY`).

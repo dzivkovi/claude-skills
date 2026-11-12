@@ -1,12 +1,9 @@
-import argparse
 import importlib.util
 import json
-import re
 import os
 import shutil
 import subprocess
 import sys
-import urllib.error
 from pathlib import Path
 
 import pytest
@@ -19,54 +16,79 @@ spec.loader.exec_module(gr)
 
 
 @pytest.fixture(autouse=True)
-def _undo_find_tool_env(monkeypatch):
-    # find_tool writes this variable into os.environ; start clean so monkeypatch undoes it.
+def _undo_find_git_env(monkeypatch):
+    # find_git writes this variable into os.environ; start clean so monkeypatch undoes it.
     monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
 
 
-def pair(cmd, a, b):
-    return any(cmd[i] == a and cmd[i + 1] == b for i in range(len(cmd) - 1))
+class Repo:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def g(self, *args):
+        return subprocess.run(["git", *args], cwd=self.path, check=True, capture_output=True)
+
+    def write(self, rel, content="x = 1\n"):
+        p = self.path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+        return p
+
+    def commit(self, *paths, force=False):
+        self.g("add", *(["-f"] if force else []), *(paths or ["-A"]))
+        self.g("-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false",
+               "commit", "-q", "-m", "c")
 
 
-def _ok_response():
-    return (
-        200,
-        {
-            "candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}],
-            "usageMetadata": {},
-        },
-    )
+@pytest.fixture
+def git_repo(tmp_path):
+    if shutil.which("git") is None:
+        pytest.skip("git not available")
+    path = tmp_path / "repo"
+    path.mkdir()
+    repo = Repo(path)
+    repo.g("init", "-q")
+    return repo
 
 
-def _setup_ready(monkeypatch, version="0.35.2"):
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", version))
-    missing = Path(__file__).parent / "no-such-dir"
-    monkeypatch.setattr(
-        gr, "system_settings_paths",
-        lambda *a, **k: (missing / "settings.json", missing / "system-defaults.json"),
-    )
-    monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: False)
-    monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
-    monkeypatch.delenv("GEMINI_CLI_SYSTEM_SETTINGS_PATH", raising=False)
+@pytest.fixture
+def brief(tmp_path):
+    p = tmp_path / "brief.md"
+    p.write_text("BRIEF TEXT", encoding="utf-8")
+    return p
 
 
-# ---- T1-T5: seed pick_model tests
+def no_network(*a, **k):
+    raise AssertionError("network attempted")
 
 
-def test_t01_carbon_picks_highest_version_and_skips_preview():
+def dry_run(monkeypatch, repo, brief, paths, extra=()):
+    monkeypatch.chdir(repo.path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(gr, "call", no_network)
+    gr.main(["--file", str(brief), "--repo", *paths, *extra, "--dry-run"])
+
+
+def refused(monkeypatch, repo, brief, paths, extra=()):
+    with pytest.raises(SystemExit) as e:
+        dry_run(monkeypatch, repo, brief, paths, extra)
+    assert e.value.code == 3
+
+
+# ---- A: model resolution
+
+
+def test_a1_carbon_picks_highest_version_and_skips_preview():
     ids = ["gemini-3-carbon", "gemini-4-carbon", "gemini-4-carbon-preview"]
     assert gr.pick_model("carbon", ids) == "gemini-4-carbon"
 
 
-def test_t02_flash_prefers_latest_alias():
+def test_a2_flash_prefers_latest_alias():
     ids = ["gemini-3.8-flash", "gemini-flash-latest"]
     assert gr.pick_model("flash", ids) == "gemini-flash-latest"
 
 
-def test_t03_flash_picks_highest_version_and_skips_excluded_tokens():
+def test_a3_flash_picks_highest_version_and_skips_excluded_tokens():
     ids = [
         "gemini-3.5-flash",
         "gemini-3.8-flash",
@@ -76,19 +98,16 @@ def test_t03_flash_picks_highest_version_and_skips_excluded_tokens():
     assert gr.pick_model("flash", ids) == "gemini-3.8-flash"
 
 
-def test_t04_unknown_alias_returns_none():
+def test_a4_unknown_alias_returns_none():
     assert gr.pick_model("nothing", ["gemini-3.8-flash"]) is None
 
 
-def test_t05_lite_alias_may_match_lite_ids():
+def test_a5_lite_alias_may_match_lite_ids():
     ids = ["gemini-3.8-flash", "gemini-3.8-flash-lite"]
     assert gr.pick_model("lite", ids) == "gemini-3.8-flash-lite"
 
 
-# ---- T6-T9
-
-
-def test_t06_unknown_alias_exits_5(monkeypatch, capsys):
+def test_a6_unknown_alias_exits_5(monkeypatch, capsys):
     monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-3.8-flash"])
     with pytest.raises(SystemExit) as e:
         gr.resolve_model("nothing", "k")
@@ -96,7 +115,7 @@ def test_t06_unknown_alias_exits_5(monkeypatch, capsys):
     assert "no generateContent model matches alias 'nothing'" in capsys.readouterr().err
 
 
-def test_t07_rejected_model_lists_available(monkeypatch, tmp_path, capsys):
+def test_a7_rejected_model_lists_available(monkeypatch, tmp_path, capsys):
     f = tmp_path / "f.md"
     f.write_text("material", encoding="utf-8")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
@@ -104,6 +123,7 @@ def test_t07_rejected_model_lists_available(monkeypatch, tmp_path, capsys):
         gr, "call", lambda *a, **k: (404, {"error": {"message": "models/gemini-x is not found"}})
     )
     monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
+    monkeypatch.setattr(gr, "output_token_limit", lambda *a, **k: None)
     with pytest.raises(SystemExit) as e:
         gr.main(["--file", str(f), "--model", "gemini-x"])
     assert e.value.code == 1
@@ -112,695 +132,357 @@ def test_t07_rejected_model_lists_available(monkeypatch, tmp_path, capsys):
     assert "gemini-4-carbon" in err
 
 
-def test_t08a_build_body_thinking_level():
-    assert gr.build_body("x", "high")["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "high"
+def test_a8_validate_model_id():
+    assert gr.validate_model_id("gemini-4-carbon") == "gemini-4-carbon"
+    for bad in ["models/../x", "a b", "..", "-x", "gemini..x", "x" * 129]:
+        with pytest.raises(SystemExit) as e:
+            gr.validate_model_id(bad)
+        assert e.value.code == 1
+    with pytest.raises(SystemExit) as e:
+        gr.resolve_model("gemini-a/b", "k")
+    assert e.value.code == 1
+
+
+# ---- B: request body and send loop
+
+
+def test_b1_build_body_attachments_and_fences():
+    body = gr.build_body(
+        "BRIEF", "high",
+        [gr.Attachment("src/a.py", "x = 1\n```\ny"), gr.Attachment("b.md", "plain")],
+    )
+    parts = body["contents"][0]["parts"]
+    assert parts[0]["text"] == "BRIEF"
+    assert parts[1]["text"].startswith("Repository file `src/a.py`:")
+    assert parts[1]["text"].splitlines()[2] == "````"
+    assert parts[2]["text"].splitlines()[2] == "```"
+    assert "not instructions" in body["systemInstruction"]["parts"][0]["text"]
+
+
+def test_b2_build_body_thinking_and_max_output():
     assert gr.build_body("x", "low")["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
+    assert gr.build_body("x", "high", None, 32768)["generationConfig"]["maxOutputTokens"] == 32768
+    assert "maxOutputTokens" not in gr.build_body("x", "high")["generationConfig"]
 
 
-def test_t08b_main_passes_thinking_level(monkeypatch, tmp_path, capsys):
-    f = tmp_path / "f.md"
-    f.write_text("material", encoding="utf-8")
+def test_b3_extract_answer_skips_thoughts():
+    cand = {"content": {"parts": [{"text": "secret", "thought": True}, {"text": "visible"}]}}
+    assert gr.extract_answer(cand) == "visible"
+
+
+def _send_env(monkeypatch, limit=32768):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
+    monkeypatch.setattr(gr, "output_token_limit", lambda *a, **k: limit)
+    monkeypatch.setattr(gr.time, "sleep", lambda *a, **k: None)
+
+
+EMPTY_MAX = (
+    200,
+    {"candidates": [{"content": {"parts": []}, "finishReason": "MAX_TOKENS"}], "usageMetadata": {"a": 1}},
+)
+GOOD = (
+    200,
+    {"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]},
+)
+
+
+def test_b4_empty_max_tokens_retries_with_low_thinking(monkeypatch, brief, capsys):
+    _send_env(monkeypatch)
+    responses = [EMPTY_MAX, GOOD]
     bodies = []
 
-    def fake_call(url, key, body):
+    def fake(url, key, body):
         bodies.append(body)
-        return _ok_response()
+        return responses[len(bodies) - 1]
 
-    monkeypatch.setattr(gr, "call", fake_call)
-    gr.main(["--file", str(f), "--model", "gemini-4-carbon", "--thinking", "low"])
-    assert bodies[-1]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
-    gr.main(["--file", str(f), "--model", "gemini-4-carbon"])
-    assert bodies[-1]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "high"
-    captured = capsys.readouterr()
-    assert "ok" in captured.out
-    assert "test-key-123" not in captured.err
-
-
-def test_t09_key_fix_hint():
-    win = gr.key_fix_hint("win32")
-    assert "setx GEMINI_API_KEY" in win
-    assert "new shell" in win
-    assert "export GEMINI_API_KEY=" in gr.key_fix_hint("linux")
-    assert "export GEMINI_API_KEY=" in gr.key_fix_hint("darwin")
+    monkeypatch.setattr(gr, "call", fake)
+    gr.main(["--file", str(brief)])
+    out, err = capsys.readouterr()
+    assert "ok" in out
+    assert len(bodies) == 2
+    assert bodies[0]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "high"
+    assert bodies[1]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
+    assert "retrying once with thinking low" in err
+    assert "thinking=low" in err
 
 
-# ---- T10-T12: setup
+def test_b5_two_empty_answers_fail(monkeypatch, brief, capsys):
+    _send_env(monkeypatch)
+    calls = []
+
+    def fake(url, key, body):
+        calls.append(body)
+        return EMPTY_MAX
+
+    monkeypatch.setattr(gr, "call", fake)
+    with pytest.raises(SystemExit) as e:
+        gr.main(["--file", str(brief)])
+    assert e.value.code == 1
+    assert "empty answer" in capsys.readouterr().err
+    assert len(calls) == 2
 
 
-def test_t10_setup_without_key(monkeypatch, capsys):
+# ---- C: setup
+
+
+def test_c1_setup_reports_model_and_git(monkeypatch, capsys):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
+    gr.main(["--setup"])
+    out, err = capsys.readouterr()
+    assert "carbon -> gemini-4-carbon, thinking high" in out
+    assert "git:" in out
+    assert "cli:" not in out and "cli:" not in err
+    assert "test-key-123" not in out and "test-key-123" not in err
+
+
+def test_c2_setup_without_key_fails(monkeypatch, capsys):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "x", None))
     with pytest.raises(SystemExit) as e:
         gr.main(["--setup"])
     assert e.value.code == 1
-    out = capsys.readouterr()
-    assert "GEMINI_API_KEY is not set" in out.err
+    assert "GEMINI_API_KEY is not set" in capsys.readouterr().err
 
 
-def test_t11_setup_ready(monkeypatch, capsys):
-    _setup_ready(monkeypatch)
-    gr.main(["--setup"])
-    out = capsys.readouterr()
-    assert "carbon -> gemini-4-carbon, thinking high" in out.out
-    assert "cli: gemini 0.35.2" in out.out
-    assert "repo mode: available" in out.out
-    assert "test-key-123" not in out.out
-    assert "test-key-123" not in out.err
-
-
-def test_t12_setup_repo_unavailable(monkeypatch, capsys):
-    _setup_ready(monkeypatch)
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "gemini CLI not found on PATH", None))
-    gr.main(["--setup"])
-    out = capsys.readouterr().out
-    assert "repo mode: unavailable" in out
-    assert "file mode" in out
-
-
-# ---- T13-T16: repo command, env, blockers
-
-
-def test_t13_repo_command_flags():
-    cmd = gr.build_repo_command("gemini", "gemini-4-carbon", None)
-    assert pair(cmd, "--approval-mode", "plan")
-    assert pair(cmd, "-o", "json")
-    assert pair(cmd, "-m", "gemini-4-carbon")
-    policy = cmd[cmd.index("--policy") + 1]
-    assert Path(policy).exists()
-    assert policy.endswith("repo-mode-policy.toml")
-    assert "-r" not in cmd
-
-
-def test_t14_repo_command_resume_latest():
-    cmd = gr.build_repo_command("gemini", "gemini-4-carbon", "latest")
-    assert pair(cmd, "-r", "latest")
-
-
-def test_t15_repo_env_pins_settings(tmp_path):
-    env = gr.build_repo_env({"GEMINI_API_KEY": "b"})
-    path = env["GEMINI_CLI_SYSTEM_SETTINGS_PATH"]
-    assert path.endswith("repo-mode-settings.json")
-    assert Path(path).exists()
-    assert env["GEMINI_API_KEY"] == "b"
-    # The CLI derives the defaults path from the settings path; it must keep the real one.
-    assert env["GEMINI_CLI_SYSTEM_DEFAULTS_PATH"].endswith("system-defaults.json")
-    assert Path(env["GEMINI_CLI_SYSTEM_DEFAULTS_PATH"]).parent != gr.HERE
-    merged = tmp_path / "settings.json"
-    env = gr.build_repo_env({"GEMINI_API_KEY": "b"}, settings_path=merged)
-    assert env["GEMINI_CLI_SYSTEM_SETTINGS_PATH"] == str(merged)
-
-
-def test_t16_prepare_settings_keeps_existing_system_settings(tmp_path):
-    work = tmp_path / "work"
-    work.mkdir()
-    path, note = gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(tmp_path / "none.json")}, work)
-    assert path.parent == work and note is None
-    got = json.loads(path.read_text(encoding="utf-8"))
-    want = json.loads(gr.SETTINGS_PATH.read_text(encoding="utf-8"))
-    name = got["context"].pop("fileName")
-    want["context"].pop("fileName")
-    assert got == want
-    # A random context-file name per run, so a hostile repo cannot plant it.
-    assert re.fullmatch(r"GEMINI_REVIEW_[0-9a-f]{32}\.md", name)
-    path2, _ = gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(tmp_path / "none.json")}, work)
-    assert json.loads(path2.read_text(encoding="utf-8"))["context"]["fileName"] != name
-
-    source = tmp_path / "system.json"
-    source.write_text(
-        '// admin file\n{"general": {"previewFeatures": true},'
-        ' "security": {"auth": {"selectedType": "oauth-personal"}}}',
-        encoding="utf-8",
-    )
-    path, note = gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(source)}, work)
-    merged = json.loads(path.read_text(encoding="utf-8"))
-    assert path.parent == work
-    assert str(source) in note
-    assert merged["general"]["previewFeatures"] is True
-    assert merged["security"]["auth"]["selectedType"] == "gemini-api-key"
-    assert merged["hooksConfig"]["enabled"] is False
-    assert merged["context"]["fileFiltering"]["respectGitIgnore"] is True
-
-    source.write_text("{bad", encoding="utf-8")
-    with pytest.raises(ValueError):
-        gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(source)}, work)
-
-    work2 = tmp_path / "work2"
-    work2.mkdir()
-    path, _ = gr.prepare_settings(
-        {"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(tmp_path / "none.json")},
-        work2, root=tmp_path, ignored=["secrets/", "notes.canary", "a b ", "x*[y"],
-    )
-    merged = json.loads(path.read_text(encoding="utf-8"))
-    listed = merged["context"]["fileFiltering"]["customIgnoreFilePaths"]
-    assert isinstance(listed, list) and len(listed) == 1
-    ignore_file = Path(os.path.join(tmp_path, listed[0])).resolve()
-    assert ignore_file.exists()
-    assert ignore_file.read_text(encoding="utf-8").splitlines() == [
-        "/secrets/", "/notes.canary", "/a b\\ ", "/x\\*\\[y",
-    ]
-
-
-# ---- T17: parse
-
-
-def test_t17_parse_repo_output():
-    stdout = "Warning: something\n" + json.dumps(
-        {
-            "session_id": "s1",
-            "response": "ok",
-            "stats": {
-                "models": {"gemini-4-carbon": {"tokens": {"input": 10, "total": 12}}},
-                "tools": {"byName": {"read_file": {"count": 2}}},
-            },
-        }
-    )
-    assert gr.parse_repo_output(stdout, "gemini-4-carbon") == (
-        "ok",
-        "s1",
-        {"input": 10, "total": 12},
-        {"read_file": 2},
-    )
-    with pytest.raises(ValueError):
-        gr.parse_repo_output("no json here", "m")
-
-
-# ---- T18-T19: repo mode gates
-
-
-def test_t18_bad_model_id_blocks_before_subprocess(monkeypatch, tmp_path, capsys):
-    f = tmp_path / "brief.md"
-    f.write_text("brief", encoding="utf-8")
-    _setup_ready(monkeypatch)
-    monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
-
-    def no_popen(*a, **k):
-        raise AssertionError("subprocess started")
-
-    monkeypatch.setattr(gr.subprocess, "Popen", no_popen)
-    with pytest.raises(SystemExit) as e:
-        gr.main(["--repo", "--brief", str(f), "--model", "gemini-bad id;rm"])
-    assert e.value.code == 1
-    assert "gemini-bad id;rm" in capsys.readouterr().err
-
-
-def test_t19_repo_unavailable_exits_3(monkeypatch, tmp_path):
-    f = tmp_path / "brief.md"
-    f.write_text("brief", encoding="utf-8")
+def test_c3_setup_unknown_alias_exits_5(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "gemini CLI not found on PATH", None))
-    monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-3.8-flash"])
     with pytest.raises(SystemExit) as e:
-        gr.main(["--repo", "--brief", str(f)])
-    assert e.value.code == 3
+        gr.main(["--setup"])
+    assert e.value.code == 5
 
 
-# ---- T20: bundled policy and settings
+# ---- D: repo gate (dry runs: no key, no network)
 
 
-def test_t20_policy_and_settings_files():
-    tomllib = pytest.importorskip("tomllib")
-    folder = SCRIPT.parent
-    with open(folder / "repo-mode-policy.toml", "rb") as fh:
-        data = tomllib.load(fh)
-    rules = data["rule"]
-
-    def names(rule):
-        tool = rule.get("toolName")
-        return [tool] if isinstance(tool, str) else list(tool or [])
-
-    catch_all = [
-        r for r in rules
-        if r.get("decision") == "deny" and "toolName" not in r and "argsPattern" not in r
-    ]
-    assert len(catch_all) == 1
-
-    allow_rules = [r for r in rules if r.get("decision") == "allow"]
-    assert allow_rules
-    allowed = set()
-    for r in allow_rules:
-        assert "toolName" in r
-        allowed |= set(names(r))
-    assert allowed == {"read_file", "list_directory", "glob"}
-    assert "grep_search" not in allowed
-
-    assert all(r["priority"] > 300 for r in rules)
-    deny_patterns = [r["argsPattern"] for r in rules if r.get("decision") == "deny" and "argsPattern" in r]
-    assert any("respect_git_ignore" in p for p in deny_patterns)
-    assert any("respect_gemini_ignore" in p for p in deny_patterns)
-
-    settings = json.loads((folder / "repo-mode-settings.json").read_text(encoding="utf-8"))
-    assert settings["security"]["auth"]["selectedType"] == "gemini-api-key"
-    assert settings["context"]["fileFiltering"]["respectGitIgnore"] is True
-    assert settings["hooksConfig"]["enabled"] is False
-    assert settings["context"]["fileName"] == "GEMINI_REVIEW_PLUGIN_NONE.md"
-    assert settings["context"]["includeDirectoryTree"] is False
-    assert any(
-        r.get("decision") == "deny" and "read_file" in names(r) and r"\.\." in r.get("argsPattern", "")
-        for r in rules
-    )
-    assert any(
-        r.get("decision") == "deny" and "read_file" in names(r) and "[A-Za-z]:" in r.get("argsPattern", "")
-        for r in rules
-    )
-    assert any(
-        r.get("decision") == "deny" and "read_file" in names(r) and "tmp" in r.get("argsPattern", "")
-        for r in rules
-    )
-
-
-# ---- T21-T27
-
-
-def test_t21_cli_not_found(monkeypatch):
-    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: None)
-    available, reason, version = gr.repo_mode_status()
-    assert available is False
-    assert "not found" in reason
-    assert version is None
-
-
-def test_t22_repo_command_hardening():
-    cmd = gr.build_repo_command("gemini", "gemini-4-carbon", None)
-    assert cmd.count("--policy") == 1
-    assert pair(cmd, "-e", "none")
-    assert pair(cmd, "--allowed-mcp-server-names", "gemini-review-none")
-    assert not (set('%"^&|<>') & set(gr.REPO_PROMPT))
-
-
-def test_t23_repo_command_resume_session_id():
-    cmd = gr.build_repo_command("gemini", "gemini-4-carbon", "abc-123")
-    assert pair(cmd, "-r", "abc-123")
-
-
-def test_t24_repo_env_pins_key_and_endpoint():
-    env = gr.build_repo_env({"GEMINI_API_KEY": "b", "GOOGLE_API_KEY": "a"})
-    assert env["GOOGLE_API_KEY"] == "b"
-    assert env["GOOGLE_GEMINI_BASE_URL"] == "https://generativelanguage.googleapis.com"
-    assert env["GOOGLE_GENAI_USE_VERTEXAI"] == "false"
-
-
-def test_t25_workspace_settings_present(tmp_path, tmp_path_factory):
-    (tmp_path / ".gemini").mkdir()
-    (tmp_path / ".gemini" / "settings.json").write_text("{}", encoding="utf-8")
-    assert gr.workspace_settings_present(tmp_path, tmp_path) is True
-    sub = tmp_path / "sub"
-    sub.mkdir()
-    assert gr.workspace_settings_present(sub, tmp_path) is True
-    fresh = tmp_path_factory.mktemp("fresh")
-    assert gr.workspace_settings_present(fresh, fresh) is False
-
-
-def test_t26_unreadable_system_settings_block_repo_mode(monkeypatch, tmp_path, capsys):
-    f = tmp_path / "brief.md"
-    f.write_text("brief", encoding="utf-8")
-    bad = tmp_path / "system.json"
-    bad.write_text("{bad", encoding="utf-8")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setenv("GEMINI_CLI_SYSTEM_SETTINGS_PATH", str(bad))
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", "0.35.2"))
-    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: False)
-    monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
-    with pytest.raises(SystemExit) as e:
-        gr.main(["--repo", "--brief", str(f), "--model", "gemini-4-carbon"])
-    assert e.value.code == 3
-    assert "system settings" in capsys.readouterr().err
-
-
-def test_t28_workspace_settings_block_repo_mode(monkeypatch, tmp_path, capsys):
-    f = tmp_path / "brief.md"
-    f.write_text("brief", encoding="utf-8")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", "0.35.2"))
-    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: True)
-    monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
-    with pytest.raises(SystemExit) as e:
-        gr.main(["--repo", "--brief", str(f), "--model", "gemini-4-carbon"])
-    assert e.value.code == 3
-    assert "workspace settings" in capsys.readouterr().err
-
-
-@pytest.mark.skipif(sys.platform != "win32", reason="Windows cwd lookup")
-def test_t27_find_gemini_ignores_planted_cmd(monkeypatch, tmp_path):
-    (tmp_path / "gemini.cmd").write_text("@echo off\r\necho planted\r\n", encoding="utf-8")
-    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
-    assert gr.find_gemini(tmp_path) is None
-    assert os.environ["NoDefaultCurrentDirectoryInExePath"] == "1"
-
-
-# ---- T29-T49
-
-
-def _git(root, *argv):
-    subprocess.run(
-        ["git", "-c", "user.email=t@t", "-c", "user.name=t", *argv],
-        cwd=root, check=True, capture_output=True,
-    )
-
-
-needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
-
-
-def test_t29_find_tool_rejects_paths_inside_the_tree(monkeypatch, tmp_path):
-    inside = tmp_path / "repo" / "bin" / "gemini"
-    inside.parent.mkdir(parents=True)
-    inside.write_text("x", encoding="utf-8")
-    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(inside))
-    monkeypatch.chdir(tmp_path)
-    assert gr.find_tool("gemini", tmp_path / "repo") is None
-    outside = tmp_path / "outside" / "gemini"
-    outside.parent.mkdir()
-    outside.write_text("x", encoding="utf-8")
-    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(outside))
-    assert gr.find_tool("gemini", tmp_path / "repo") == str(outside.resolve())
-
-
-def test_t30_find_tool_rejects_result_in_cwd(monkeypatch, tmp_path):
-    (tmp_path / "gemini").write_text("x", encoding="utf-8")
-    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(tmp_path / "gemini"))
-    monkeypatch.chdir(tmp_path)
-    assert gr.find_tool("gemini", None) is None
-
-
-def test_t31_changed_paths_and_status_entries():
-    same = (" M a.txt\0", {"<tracked diff>": "h1", "<HEAD>": "c1"})
-    assert gr.changed_paths(same, (same[0], dict(same[1]))) == []
-    after = (" M a.txt\0", {"<tracked diff>": "h2", "<HEAD>": "c1"})
-    assert gr.changed_paths(same, after) == ["<tracked diff>"]
-    new = (" M a.txt\0?? new.txt\0", {"<tracked diff>": "h1", "<HEAD>": "c1", "new.txt": "x"})
-    assert "new.txt" in gr.changed_paths(same, new)
-    assert gr.status_entries("R  new.py\0old.py\0 M z.txt\0") == {"new.py", "old.py", "z.txt"}
-
-
-@needs_git
-def test_t32_tree_fingerprint_sees_repeat_edits_and_commits(tmp_path):
-    root = tmp_path / "repo"
-    root.mkdir()
-    _git(root, "init", "-q")
-    (root / "a.txt").write_text("one\n", encoding="utf-8")
-    _git(root, "add", "a.txt")
-    _git(root, "commit", "-q", "-m", "init")
-    (root / "a.txt").write_text("two\n", encoding="utf-8")
-    fp1 = gr.tree_fingerprint(root)
-    (root / "a.txt").write_text("three, different\n", encoding="utf-8")
-    fp2 = gr.tree_fingerprint(root)
-    assert fp1 != fp2
-    assert fp1[0] == fp2[0]
-    _git(root, "commit", "-q", "-a", "-m", "second")
-    fp3 = gr.tree_fingerprint(root)
-    assert fp3[1]["<HEAD>"] != fp2[1]["<HEAD>"]
-
-
-def _cli_fakes(monkeypatch, outcome, fingerprints=None):
-    """Patch run_cli's collaborators; returns the list that records run_bounded calls."""
-    calls = []
-    monkeypatch.setattr(gr, "find_gemini", lambda *a, **k: "C:/fake/gemini.exe")
-    seq = iter(fingerprints or [("s", {"h": "1"})] * 2)
-    monkeypatch.setattr(gr, "tree_fingerprint", lambda root: next(seq))
-
-    def fake(cmd, timeout, env=None, cwd=None, stdin_text=None):
-        calls.append({"cmd": cmd, "timeout": timeout, "env": env, "cwd": cwd, "stdin_text": stdin_text})
-        if isinstance(outcome, BaseException):
-            raise outcome
-        return outcome
-
-    monkeypatch.setattr(gr, "run_bounded", fake)
-    return calls
-
-
-def _good_outcome():
-    return (
-        0,
-        json.dumps(
-            {
-                "session_id": "s9",
-                "response": "the answer",
-                "stats": {
-                    "models": {"gemini-4-carbon": {"tokens": {"total": 5}}},
-                    "tools": {"byName": {"read_file": {"count": 1}}},
-                },
-            }
-        ),
-        "",
-    )
-
-
-def test_t33_run_cli_happy_path(monkeypatch, tmp_path, capsys):
-    calls = _cli_fakes(monkeypatch, _good_outcome())
-    args = argparse.Namespace(out=str(tmp_path / "o.md"))
-    gr.run_cli(args, tmp_path, tmp_path, "gemini-4-carbon", None, "BRIEF TEXT", {"GOOGLE_API_KEY": "k"})
-    captured = capsys.readouterr()
-    assert "the answer" in captured.out
-    assert "the answer" in (tmp_path / "o.md").read_text(encoding="utf-8")
-    assert "session=s9" in captured.err
-    assert calls[0]["stdin_text"] == "BRIEF TEXT"
-    assert not any("BRIEF TEXT" in part for part in calls[0]["cmd"])
-    assert calls[0]["cwd"] == tmp_path
-    assert calls[0]["timeout"] == gr.REPO_TIMEOUT_S
-
-
-def test_t34_run_cli_tree_changed_exits_4(monkeypatch, tmp_path, capsys):
-    _cli_fakes(monkeypatch, _good_outcome(), [("s", {"h": "1"}), ("s", {"h": "2"})])
-    args = argparse.Namespace(out=None)
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(args, tmp_path, tmp_path, "gemini-4-carbon", None, "b", {})
-    assert e.value.code == 4
-    captured = capsys.readouterr()
-    assert "the answer" in captured.out
-    assert "working tree changed" in captured.err
-    assert "h" in captured.err
-
-
-def test_t35_run_cli_auth_hint(monkeypatch, tmp_path, capsys):
-    _cli_fakes(monkeypatch, (1, "", "Error: API key not valid"))
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(argparse.Namespace(out=None), tmp_path, tmp_path, "gemini-4-carbon", None, "b", {})
-    assert e.value.code == 1
-    assert "/gemini:setup" in capsys.readouterr().err
-
-
-def test_t36_run_cli_timeout(monkeypatch, tmp_path, capsys):
-    _cli_fakes(monkeypatch, subprocess.TimeoutExpired(cmd="x", timeout=1))
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(argparse.Namespace(out=None), tmp_path, tmp_path, "gemini-4-carbon", None, "b", {})
-    assert e.value.code == 1
-    assert "timed out" in capsys.readouterr().err
-
-
-def test_t37_run_cli_empty_answer(monkeypatch, tmp_path, capsys):
-    _cli_fakes(monkeypatch, (0, json.dumps({"session_id": "s", "response": ""}), ""))
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(argparse.Namespace(out=None), tmp_path, tmp_path, "gemini-4-carbon", None, "b", {})
-    assert e.value.code == 1
-    assert "no answer" in capsys.readouterr().err
-
-
-def test_t38_run_cli_resume_latest_without_sessions(monkeypatch, tmp_path, capsys):
-    _cli_fakes(monkeypatch, AssertionError("run_bounded must not be called"))
-    args = argparse.Namespace(out=None)
-    monkeypatch.setattr(gr, "has_previous_session", lambda *a, **k: False)
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(args, tmp_path, tmp_path, "gemini-4-carbon", "latest", "b", {})
-    assert e.value.code == 1
-    assert "no previous Gemini session" in capsys.readouterr().err
-
-    def boom(*a, **k):
-        raise RuntimeError("boom")
-
-    monkeypatch.setattr(gr, "has_previous_session", boom)
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(args, tmp_path, tmp_path, "gemini-4-carbon", "latest", "b", {})
-    assert e.value.code == 1
-    assert "boom" in capsys.readouterr().err
-
-
-def test_t39_run_cli_cmd_metacharacter_guard(monkeypatch, tmp_path):
-    _cli_fakes(monkeypatch, AssertionError("run_bounded must not be called"))
-    monkeypatch.setattr(gr, "find_gemini", lambda *a, **k: "C:/fa&ke/gemini.cmd")
-    with pytest.raises(SystemExit) as e:
-        gr.run_cli(argparse.Namespace(out=None), tmp_path, tmp_path, "gemini-4-carbon", None, "b", {})
-    assert e.value.code == 3
-
-
-def test_t40_has_previous_session(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        gr, "run_bounded", lambda *a, **k: (0, "No previous sessions found for this project.", "")
-    )
-    assert gr.has_previous_session("gemini", {}, tmp_path) is False
-    monkeypatch.setattr(gr, "run_bounded", lambda *a, **k: (0, "Available sessions ... [abc]", ""))
-    assert gr.has_previous_session("gemini", {}, tmp_path) is True
-    monkeypatch.setattr(gr, "run_bounded", lambda *a, **k: (1, "", "bad"))
-    with pytest.raises(RuntimeError):
-        gr.has_previous_session("gemini", {}, tmp_path)
-
-
-def test_t41_session_id_is_validated_before_launch(monkeypatch, tmp_path, capsys):
-    f = tmp_path / "brief.md"
-    f.write_text("brief", encoding="utf-8")
-    _setup_ready(monkeypatch)
-
-    def no_popen(*a, **k):
-        raise AssertionError("subprocess started")
-
-    monkeypatch.setattr(gr.subprocess, "Popen", no_popen)
-    with pytest.raises(SystemExit) as e:
-        gr.main(["--repo", "--brief", str(f), "--model", "gemini-4-carbon", "--resume", "abc&calc"])
-    assert e.value.code == 1
-    assert "abc&calc" in capsys.readouterr().err
-
-
-def test_t42_setup_branches(monkeypatch, tmp_path, capsys):
-    _setup_ready(monkeypatch)
-    present = tmp_path / "settings.json"
-    present.write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(
-        gr, "system_settings_paths", lambda *a, **k: (present, tmp_path / "system-defaults.json")
-    )
-    gr.main(["--setup"])
-    out = capsys.readouterr().out
-    assert "system settings:" in out
-    assert "is kept" in out
-
-    _setup_ready(monkeypatch)
-    monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: True)
-    gr.main(["--setup"])
-    out = capsys.readouterr().out
-    assert "repo mode: unavailable here" in out
-    assert "file mode" in out
-    assert "repo mode: available" not in out
-
-    _setup_ready(monkeypatch)
-    monkeypatch.setattr(
-        gr, "user_settings_blocker", lambda *a, **k: "X sets context.includeDirectories"
-    )
-    gr.main(["--setup"])
-    out = capsys.readouterr().out
-    assert "includeDirectories" in out
-    assert "repo mode: available" not in out
-
-
-def test_t43_list_models_failure(monkeypatch, capsys):
-    monkeypatch.setattr(gr.time, "sleep", lambda *a, **k: None)
-    monkeypatch.setattr(gr, "call", lambda *a, **k: (403, {"error": {"message": "API key not valid"}}))
-    with pytest.raises(SystemExit) as e:
-        gr.list_models("k")
-    assert e.value.code == 1
+def test_d1_tracked_file_is_attached(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    dry_run(monkeypatch, git_repo, brief, ["src/a.py"])
     err = capsys.readouterr().err
-    assert "cannot list models" in err
-    assert "403" in err
-
-    count = []
-
-    def flaky(*a, **k):
-        count.append(1)
-        return 0, {"error": {"message": "network error"}}
-
-    monkeypatch.setattr(gr, "call", flaky)
-    with pytest.raises(SystemExit) as e:
-        gr.list_models("k")
-    assert e.value.code == 1
-    assert len(count) == 2
+    assert "attaching 1 files" in err
+    assert "src/a.py" in err
 
 
-def test_t44_call_timeout_classification(monkeypatch):
-    def timed_out(*a, **k):
-        raise urllib.error.URLError(TimeoutError("timed out"))
-
-    monkeypatch.setattr(gr.urllib.request, "urlopen", timed_out)
-    assert gr.call("http://example.invalid/x", "k", None)[0] == gr.STATUS_TIMEOUT
-
-    def reset(*a, **k):
-        raise ConnectionResetError()
-
-    monkeypatch.setattr(gr.urllib.request, "urlopen", reset)
-    assert gr.call("http://example.invalid/x", "k", None)[0] == 0
-
-    count = []
-
-    def fake_call(*a, **k):
-        count.append(1)
-        return gr.STATUS_TIMEOUT, {}
-
-    monkeypatch.setattr(gr, "call", fake_call)
-    monkeypatch.setattr(gr.time, "sleep", lambda *a, **k: None)
-    assert gr.call_with_retry("u", "k", None)[0] == gr.STATUS_TIMEOUT
-    assert len(count) == 1
+def test_d2_ignored_untracked_file_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write(".gitignore", "secrets/\n")
+    git_repo.write("secrets/s.env", "K=1\n")
+    refused(monkeypatch, git_repo, brief, ["secrets/s.env"])
+    err = capsys.readouterr().err
+    assert "nothing sent" in err
+    assert "secrets/s.env" in err
 
 
-def test_t45_env_file_keys_and_pinning(tmp_path):
-    repo = tmp_path / "repo"
-    (repo / ".gemini").mkdir(parents=True)
-    (repo / ".env").write_text(
-        "NODE_OPTIONS=--require ./x.js\nexport GEMINI_CLI_HOME=./h\nHTTPS_PROXY: http://p\n# COMMENTED=1\n",
-        encoding="utf-8",
-    )
-    (repo / ".gemini" / ".env").write_text("GEMINI_SYSTEM_MD=~/.ssh/id_rsa\n", encoding="utf-8")
-    keys = gr.env_file_keys(repo, tmp_path / "home")
-    assert {"NODE_OPTIONS", "GEMINI_CLI_HOME", "HTTPS_PROXY", "GEMINI_SYSTEM_MD"} <= keys
-    assert "COMMENTED" not in keys
-    env = gr.build_repo_env({"GEMINI_API_KEY": "b", "HTTPS_PROXY": "http://mine"}, None, gr.SETTINGS_PATH, keys)
-    assert env["NODE_OPTIONS"] == ""
-    assert env["GEMINI_CLI_HOME"] == ""
-    assert env["HTTPS_PROXY"] == "http://mine"
-    assert env["GEMINI_SYSTEM_MD"] == "false"
-    assert env["GEMINI_SANDBOX"] == "false"
-    assert env["GEMINI_WRITE_SYSTEM_MD"] == "false"
-    assert env["GEMINI_CLI_NO_RELAUNCH"] == "true"
+def test_d3_force_added_ignored_file_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write(".gitignore", "*.canary\n")
+    git_repo.write("notes.canary", "hello\n")
+    git_repo.commit(".gitignore")
+    git_repo.commit("notes.canary", force=True)
+    refused(monkeypatch, git_repo, brief, ["notes.canary"])
+    assert "check-ignore" in capsys.readouterr().err
 
 
-def test_t46_workspace_settings_present_skips_home(monkeypatch, tmp_path):
-    monkeypatch.setattr(gr.Path, "home", staticmethod(lambda: tmp_path))
-    (tmp_path / ".gemini").mkdir()
-    (tmp_path / ".gemini" / "settings.json").write_text("{}", encoding="utf-8")
-    assert gr.workspace_settings_present(tmp_path, tmp_path) is False
-    sub = tmp_path / "sub"
-    (sub / ".gemini").mkdir(parents=True)
-    (sub / ".gemini" / "settings.json").write_text("{}", encoding="utf-8")
-    assert gr.workspace_settings_present(sub, tmp_path) is True
+def test_d4_core_excludes_file_refused(monkeypatch, git_repo, brief, tmp_path):
+    excludes = tmp_path / "global-excludes"
+    excludes.write_text("excluded.txt\n", encoding="utf-8")
+    git_repo.g("config", "core.excludesFile", excludes.as_posix())
+    git_repo.write("excluded.txt", "data\n")
+    refused(monkeypatch, git_repo, brief, ["excluded.txt"])
 
 
-def test_t47_user_settings_blocker(tmp_path):
-    environ = {"GEMINI_CLI_HOME": str(tmp_path)}
-    assert gr.user_settings_blocker(environ) is None
-    (tmp_path / ".gemini").mkdir()
-    path = tmp_path / ".gemini" / "settings.json"
-    path.write_text(json.dumps({"context": {"includeDirectories": ["C:/x"]}}), encoding="utf-8")
-    assert "includeDirectories" in gr.user_settings_blocker(environ)
-    path.write_text(json.dumps({"context": {}}), encoding="utf-8")
-    assert gr.user_settings_blocker(environ) is None
-    path.write_text("{ includeDirectories broken", encoding="utf-8")
-    assert "cannot parse" in gr.user_settings_blocker(environ)
+def test_d5_secret_names_refused_but_example_allowed(monkeypatch, git_repo, brief, capsys):
+    git_repo.write(".env", "K=1\n")
+    git_repo.write("config/id_rsa", "key\n")
+    git_repo.write(".env.example", "K=\n")
+    git_repo.commit(force=True)
+    for name in (".env", "config/id_rsa"):
+        refused(monkeypatch, git_repo, brief, [name])
+        assert "secret file name" in capsys.readouterr().err
+    dry_run(monkeypatch, git_repo, brief, [".env.example"])
+    assert "attaching 1 files" in capsys.readouterr().err
 
 
-@needs_git
-def test_t48_links_into_ignored(tmp_path):
-    root = tmp_path / "repo"
-    root.mkdir()
-    _git(root, "init", "-q")
-    _git(root, "config", "core.symlinks", "true")
-    (root / ".gitignore").write_text("secrets/\n", encoding="utf-8")
-    (root / "secrets").mkdir()
-    (root / "secrets" / "s.env").write_text("K=V\n", encoding="utf-8")
+def test_d6_skip_worktree_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("local.cfg", "a=1\n")
+    git_repo.commit()
+    git_repo.g("update-index", "--skip-worktree", "local.cfg")
+    refused(monkeypatch, git_repo, brief, ["local.cfg"])
+    assert "skip-worktree" in capsys.readouterr().err
+
+
+def test_d7_untracked_not_ignored_file_allowed(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    git_repo.write("src/draft.py", "y = 2\n")
+    dry_run(monkeypatch, git_repo, brief, ["src/draft.py"])
+    assert "attaching 1 files" in capsys.readouterr().err
+
+
+def test_d8_folder_expands_to_tracked_files_in_order(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.write("src/b.py")
+    git_repo.commit()
+    git_repo.write("src/c.py")
+    dry_run(monkeypatch, git_repo, brief, ["src"])
+    err = capsys.readouterr().err
+    assert err.index("src/a.py") < err.index("src/b.py")
+    assert "src/c.py" not in err
+
+
+def test_d9_symlinked_directory_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
     try:
-        os.symlink("secrets", root / "lnk", target_is_directory=True)
+        os.symlink("src", git_repo.path / "lnk", target_is_directory=True)
     except (OSError, NotImplementedError) as exc:
-        pytest.skip(f"cannot create symlinks here: {exc}")
-    _git(root, "add", ".gitignore", "lnk")
-    _git(root, "commit", "-q", "-m", "init")
-    ignored = gr.ignored_entries(root.resolve())
-    assert "secrets/" in ignored
-    assert gr.links_into_ignored(root.resolve(), ignored) == ["lnk"]
+        pytest.skip(f"cannot create symlink: {exc}")
+    refused(monkeypatch, git_repo, brief, ["lnk/a.py"])
+    assert "link" in capsys.readouterr().err
 
 
-def test_t49_neutralize_brief():
-    out = gr.neutralize_brief("see @secrets/x and a @ b")
-    assert out.startswith("Brief:\n\n")
-    assert "@\u200bsecrets/x" in out
-    assert "a @ b" in out
-    assert not gr.neutralize_brief("/cmd now").startswith("/")
+def test_d10_outside_and_missing_paths_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["../outside.txt"])
+    assert "outside the repository" in capsys.readouterr().err
+    refused(monkeypatch, git_repo, brief, ["missing.py"])
+
+
+def test_d11_binary_file_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("bin.dat", b"\x00\x01")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["bin.dat"])
+    assert "binary" in capsys.readouterr().err
+
+
+def test_d12_over_max_bytes_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("big.txt", "a" * 2000)
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["big.txt"], extra=["--max-bytes", "1000"])
+    err = capsys.readouterr().err
+    assert "over --max-bytes" in err
+    assert "big.txt" in err
+
+
+def test_d13_not_a_repository_refused(monkeypatch, tmp_path, brief):
+    notrepo = tmp_path / "notrepo"
+    notrepo.mkdir()
+    monkeypatch.chdir(notrepo)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(gr, "call", no_network)
+    with pytest.raises(SystemExit) as e:
+        gr.main(["--file", str(brief), "--repo", "x.py", "--dry-run"])
+    assert e.value.code == 3
+
+
+def test_d14_one_refused_path_stops_everything(monkeypatch, git_repo, brief, capsys):
+    git_repo.write(".gitignore", "secrets/\n")
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    git_repo.write("secrets/s.env", "K=1\n")
+    calls = []
+    monkeypatch.chdir(git_repo.path)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "call", lambda *a, **k: calls.append(a) or no_network())
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: calls.append(a) or no_network())
+    with pytest.raises(SystemExit) as e:
+        gr.main(["--file", str(brief), "--repo", "src/a.py", "secrets/s.env"])
+    assert e.value.code == 3
+    assert calls == []
+    assert "nothing sent" in capsys.readouterr().err
+
+
+def test_d15_save_request_holds_brief_and_file(monkeypatch, git_repo, brief, tmp_path):
+    git_repo.write("src/a.py", "VISIBLE_TEXT")
+    git_repo.commit()
+    monkeypatch.chdir(git_repo.path)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
+    monkeypatch.setattr(gr, "output_token_limit", lambda *a, **k: None)
+    monkeypatch.setattr(gr, "call", lambda *a, **k: GOOD)
+    req = tmp_path / "req.json"
+    gr.main(["--file", str(brief), "--repo", "src/a.py", "--save-request", str(req)])
+    text = req.read_text(encoding="utf-8")
+    assert "VISIBLE_TEXT" in text
+    assert "Repository file `src/a.py`" in text
+    parts = json.loads(text)["contents"][0]["parts"]
+    assert parts[0]["text"] == "BRIEF TEXT"
+
+
+def test_d16_encrypting_filter_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write(".gitattributes", "*.secret filter=git-crypt diff=git-crypt\n")
+    git_repo.write("x.secret", "data\n")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["x.secret"])
+    assert "encrypting" in capsys.readouterr().err
+
+
+# ---- E: usage errors and helpers
+
+
+def test_e1_usage_errors_exit_2(tmp_path):
+    f = tmp_path / "f.md"
+    f.write_text("m", encoding="utf-8")
+    for argv in (["--file", str(f), "--repo"], ["--brief", str(f)], ["--file", str(f), "--dry-run"]):
+        with pytest.raises(SystemExit) as e:
+            gr.main(argv)
+        assert e.value.code == 2
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="NTFS junctions are Windows-only")
+def test_d9b_junction_into_ignored_folder_refused(monkeypatch, git_repo, brief, capsys):
+    # git lists lnk/s.env as untracked-not-ignored: the reparse-point check is the only guard.
+    import _winapi
+    git_repo.write(".gitignore", "secrets/\n")
+    git_repo.write("secrets/s.env", "TOKEN=1\n")
+    git_repo.commit(".gitignore")
+    _winapi.CreateJunction(str(git_repo.path / "secrets"), str(git_repo.path / "lnk"))
+    refused(monkeypatch, git_repo, brief, ["lnk/s.env"])
+    assert "link" in capsys.readouterr().err
+    refused(monkeypatch, git_repo, brief, ["lnk"])
+
+
+def test_d16b_any_content_filter_refused_but_lfs_allowed(monkeypatch, git_repo, brief, capsys):
+    # transcrypt uses filter=crypt, git-crypt with a named key uses git-crypt-<key>.
+    git_repo.write(".gitattributes", "*.t filter=crypt\n*.bin2 filter=lfs\n")
+    git_repo.write("x.t", "plain\n")
+    git_repo.write("y.bin2", "plain\n")
+    git_repo.commit(".gitattributes", "x.t", "y.bin2")
+    refused(monkeypatch, git_repo, brief, ["x.t"])
+    assert "content filter" in capsys.readouterr().err
+    dry_run(monkeypatch, git_repo, brief, ["y.bin2"])
+
+
+def test_d17_folder_member_binary_is_omitted_not_fatal(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py", "x = 1\n")
+    git_repo.write("src/logo.png", b"\x89PNG\x00\x00")
+    git_repo.commit()
+    dry_run(monkeypatch, git_repo, brief, ["src"])
+    err = capsys.readouterr().err
+    assert "omitted src/logo.png" in err and "attaching 1 files" in err
+
+
+def test_d18_dry_run_save_request_writes_body_without_network(monkeypatch, git_repo, brief, tmp_path):
+    git_repo.write("src/a.py", "VISIBLE_TEXT\n")
+    git_repo.commit()
+    out = tmp_path / "req.json"
+    dry_run(monkeypatch, git_repo, brief, ["src/a.py"], ["--save-request", str(out)])
+    body = json.loads(out.read_text(encoding="utf-8"))
+    assert body["contents"][0]["parts"][0]["text"] == "BRIEF TEXT"
+    assert "VISIBLE_TEXT" in body["contents"][0]["parts"][1]["text"]
+
+
+def test_d19_inherited_git_dir_is_ignored(monkeypatch, git_repo, brief, tmp_path, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "elsewhere"))
+    dry_run(monkeypatch, git_repo, brief, ["src/a.py"])
+    assert "attaching 1 files" in capsys.readouterr().err
+
+
+def test_e2_secret_name():
+    for name in (".env", "config/.env.local", "a/id_rsa.pub", "k.PEM"):
+        assert gr.secret_name(name) is True, name
+    for name in ("README.md", ".env.example", "environment.py"):
+        assert gr.secret_name(name) is False, name
