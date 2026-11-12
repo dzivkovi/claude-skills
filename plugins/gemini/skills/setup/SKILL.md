@@ -16,10 +16,10 @@ Pick the interpreter once: the first of `python3`, `python`, `py -3` that is Pyt
 ```bash
 for c in python3 python "py -3"; do $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1 && { PY="$c"; break; }; done
 [ -n "$PY" ] || { echo "No Python 3.10+ found (tried python3, python, py -3)."; exit 1; }
-$PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --setup $ARGUMENTS
+$PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --setup [--model <m>]
 ```
 
-If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_review.py` relative to this skill's base directory.
+Add `--model <m>` only when the user named a model; never paste the raw slash-command arguments into the shell. If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_review.py` relative to this skill's base directory.
 
 ## Reading the result
 

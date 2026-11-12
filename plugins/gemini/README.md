@@ -41,7 +41,7 @@ A file named with `--repo` is attached only when all of these hold:
 - git lists it: tracked, or untracked and not ignored;
 - `git check-ignore --no-index` does not match it, so a file that was force-added past `.gitignore` (a committed `.env`, say) is still refused;
 - its name is not a secret file name (`.env`, `.env.*` except `.example`/`.sample`/`.template`, `.envrc`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.ppk`, `*.jks`, SSH keys, `.npmrc`, `.pypirc`, `.netrc`, `.git-credentials`, `credentials.json`, `service-account*.json`, `*.tfvars`, `*.tfstate`, `secrets.*`);
-- it is not marked skip-worktree or assume-unchanged (local edits git hides), has no `git-crypt`/`transcrypt` filter, and is not a submodule;
+- it is not marked skip-worktree or assume-unchanged (local edits git hides), has no content filter in `.gitattributes` (git-crypt, transcrypt, LFS), and is not a submodule;
 - no link or junction sits anywhere on its path, it is not a hard link (whose content can also live under an ignored name or outside the repository), and it is a regular UTF-8 text file inside the repository. Cloud placeholders from OneDrive or Dropbox are not links and pass.
 
 A folder brings in its tracked files only; untracked files have to be named one by one. **If any file Claude named is refused, nothing is sent** and the script exits 3 with the reasons. The same happens when the files add up to more than `--max-bytes` (500 KB by default, about 125k tokens): it lists the sizes so Claude can name fewer. `--dry-run` shows what would be attached without sending anything, and `--save-request <path>` writes the exact request body for an audit.

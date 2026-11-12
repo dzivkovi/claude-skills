@@ -86,7 +86,9 @@ SECRET_NAMES = [
     "service-account*.json", "*.tfvars", "*.tfstate", "secrets.*",
 ]
 SECRET_NAME_EXCEPTIONS = [".env.example", ".env.sample", ".env.template"]
-HARMLESS_FILTERS = {"unspecified", "unset", "lfs"}
+# LFS is refused too: its files are pointers or binaries, and a clean filter set in
+# .git/config would run during a working-tree diff.
+HARMLESS_FILTERS = {"unspecified", "unset"}
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 REPARSE_TAG_NAME_SURROGATE = 0x20000000  # set on symlinks, junctions and other path redirects
 
@@ -293,6 +295,7 @@ class Gate:
     tracked: dict[str, str] = field(default_factory=dict)  # path -> mode
     untracked: set[str] = field(default_factory=set)
     flagged: set[str] = field(default_factory=set)  # skip-worktree or assume-unchanged
+    link_dirs: dict[Path, bool] = field(default_factory=dict)  # folder -> is a link (cache)
     ignored: set[str] = field(default_factory=set)  # git check-ignore --no-index matches
     encrypted: set[str] = field(default_factory=set)  # git-crypt / transcrypt filter
 
@@ -404,7 +407,7 @@ def load_gate(cwd: Path) -> Gate:
     # A path beyond a symbolic link makes check-ignore fail the whole batch; such
     # paths are refused anyway (link_on_path), so leave them out of the batch.
     gate.git = git
-    candidates = sorted(p for p in set(gate.tracked) | gate.untracked if not _linked_parent(root, p))
+    candidates = sorted(p for p in set(gate.tracked) | gate.untracked if not _linked_parent(gate, p))
     if candidates:
         payload = b"".join(c.encode("utf-8") + b"\0" for c in candidates)
         # Exit 1 means "nothing matched", not failure.
@@ -422,8 +425,8 @@ def load_gate(cwd: Path) -> Gate:
         except UnicodeDecodeError as exc:
             raise RuntimeError("git check-attr output is not UTF-8") from exc
         for i in range(0, len(fields), 3):  # path, attribute, value
-            # Any content filter except LFS: git-crypt uses git-crypt[-key], transcrypt
-            # uses crypt[-context], and an unlocked work tree holds the plaintext.
+            # Any content filter: git-crypt uses git-crypt[-key], transcrypt uses
+            # crypt[-context], and an unlocked work tree holds the plaintext.
             if fields[i + 2] not in HARMLESS_FILTERS:
                 gate.encrypted.add(fields[i])
     return gate
@@ -468,21 +471,18 @@ def _is_link_reparse(st: os.stat_result) -> bool:
     return True if tag is None else bool(tag & REPARSE_TAG_NAME_SURROGATE)
 
 
-_LINK_DIR_CACHE: dict[Path, bool] = {}
-
-
-def _linked_parent(root: Path, rel: str) -> bool:
-    """True when a folder on the way to rel is a link (cached per folder)."""
-    current = root
+def _linked_parent(gate: Gate, rel: str) -> bool:
+    """True when a folder on the way to rel is a link (cached per folder on the gate)."""
+    current = gate.root
     for part in PurePosixPath(rel).parts[:-1]:
         current = current / part
-        if current not in _LINK_DIR_CACHE:
+        if current not in gate.link_dirs:
             try:
                 st = os.lstat(current)
-                _LINK_DIR_CACHE[current] = stat.S_ISLNK(st.st_mode) or _is_link_reparse(st)
+                gate.link_dirs[current] = stat.S_ISLNK(st.st_mode) or _is_link_reparse(st)
             except OSError:
-                _LINK_DIR_CACHE[current] = False
-        if _LINK_DIR_CACHE[current]:
+                gate.link_dirs[current] = False
+        if gate.link_dirs[current]:
             return True
     return False
 
@@ -528,10 +528,11 @@ def match_git_spelling(gate: Gate, rel: str) -> str:
     folded = {k.casefold(): k for k in known}
     if rel.casefold() in folded:
         return folded[rel.casefold()]
-    prefix = rel.casefold() + "/"
+    want = rel.casefold().split("/")
     for k in sorted(gate.tracked):
-        if k.casefold().startswith(prefix):
-            return k[: len(rel)]
+        parts = k.split("/")
+        if len(parts) > len(want) and [c.casefold() for c in parts[: len(want)]] == want:
+            return "/".join(parts[: len(want)])  # by component: casefold can change lengths
     return rel
 
 
@@ -594,6 +595,12 @@ def read_attachment(root: Path, rel: str, limit: int) -> tuple[str | None, int, 
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
     try:
         before = os.lstat(path)
+    except OSError as exc:
+        return None, 0, f"cannot open: {exc.strerror or exc}"
+    # Before opening: a named pipe or device in place of a tracked file would block.
+    if not stat.S_ISREG(before.st_mode):
+        return None, 0, "not a regular file"
+    try:
         fd = os.open(path, flags)
     except OSError as exc:
         return None, 0, f"cannot open: {exc.strerror or exc}"
@@ -630,12 +637,15 @@ def read_attachment(root: Path, rel: str, limit: int) -> tuple[str | None, int, 
         return None, len(data), "binary (not UTF-8 text)"
 
 
-def collect_repo_attachments(args: list[str], max_bytes: int, cwd: Path) -> list[Attachment]:
-    """Everything is collected and checked before any network call; a refusal exits 3."""
+def open_gate(cwd: Path, flag: str) -> Gate:
     try:
-        gate = load_gate(cwd)
+        return load_gate(cwd)
     except RuntimeError as exc:
-        fail(f"--repo refused, nothing sent: {exc}", EXIT_REFUSED)
+        fail(f"{flag} refused, nothing sent: {exc}", EXIT_REFUSED)
+
+
+def collect_repo_attachments(gate: Gate, args: list[str], max_bytes: int, cwd: Path) -> list[Attachment]:
+    """Everything is collected and checked before any network call; a refusal exits 3."""
     sel = select_files(gate, args, cwd)
     for path, reason in sel.omitted:
         print(f"gemini_review: omitted {path}: {reason}", file=sys.stderr)
@@ -714,7 +724,7 @@ def _deleted_refusals(gate: Gate, deleted: list[str]) -> dict[str, str]:
     return reasons
 
 
-def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
+def collect_diff(gate: Gate, base: str, max_bytes: int) -> Attachment:
     """The diff, built by the script from files the gate allows.
 
     `git diff` on its own would carry hunks of force-added ignored files, a committed
@@ -725,7 +735,6 @@ def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
     if base.startswith("-") or not BASE_REF_RE.fullmatch(base):
         fail(f"--diff base {base!r} is not a plain git ref")
     try:
-        gate = load_gate(cwd)
         spec = ["HEAD"] if base == "HEAD" else [f"{base}...HEAD"]
         names = _z_paths(run_git(gate.git, ["diff", "--name-only", "-z", "--no-renames", *spec, "--"], gate.root))
         # A file deleted in the change is no longer in git's lists; its deletion hunk
@@ -838,6 +847,8 @@ def send(brief: str, attachments: list[Attachment], args: argparse.Namespace, ke
         )
         thinking = "low"
         body = build_body(brief, thinking, attachments, max_output)
+        if args.save_request:  # the audit file shows what was actually sent last
+            Path(args.save_request).write_text(json.dumps(body, indent=2), encoding="utf-8")
         status, data = call_with_retry(url, key, body)
     if not answer.strip():
         fail(f"empty answer (finishReason={finish}, usage={data.get('usageMetadata')})")
@@ -886,11 +897,13 @@ def main(argv: list[str] | None = None) -> None:
         if not args.file:
             parser.error("--repo and --diff need --file: the brief that says what to look at and why")
         remaining = args.max_bytes
+        # One gate for both: the same git snapshot decides the diff and the files.
+        gate = open_gate(Path.cwd(), "--diff" if args.diff else "--repo")
         if args.diff:
-            attachments.append(collect_diff(args.diff, remaining, Path.cwd()))
+            attachments.append(collect_diff(gate, args.diff, remaining))
             remaining -= len(attachments[0].text.encode("utf-8"))  # one cap for everything attached
         if args.repo:
-            attachments += collect_repo_attachments(args.repo, remaining, Path.cwd())
+            attachments += collect_repo_attachments(gate, args.repo, remaining, Path.cwd())
         if args.dry_run:
             # No model lookup and no network: the body is what would be sent, minus
             # the model's output limit.

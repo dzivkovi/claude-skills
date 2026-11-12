@@ -443,7 +443,7 @@ def test_d9b_junction_into_ignored_folder_refused(monkeypatch, git_repo, brief, 
     refused(monkeypatch, git_repo, brief, ["lnk"])
 
 
-def test_d16b_any_content_filter_refused_but_lfs_allowed(monkeypatch, git_repo, brief, capsys):
+def test_d16b_any_content_filter_refused_including_lfs(monkeypatch, git_repo, brief, capsys):
     # transcrypt uses filter=crypt, git-crypt with a named key uses git-crypt-<key>.
     git_repo.write(".gitattributes", "*.t filter=crypt\n*.bin2 filter=lfs\n")
     git_repo.write("x.t", "plain\n")
@@ -451,7 +451,7 @@ def test_d16b_any_content_filter_refused_but_lfs_allowed(monkeypatch, git_repo, 
     git_repo.commit(".gitattributes", "x.t", "y.bin2")
     refused(monkeypatch, git_repo, brief, ["x.t"])
     assert "content filter" in capsys.readouterr().err
-    dry_run(monkeypatch, git_repo, brief, ["y.bin2"])
+    refused(monkeypatch, git_repo, brief, ["y.bin2"])  # LFS refused too (clean filters run on diff)
 
 
 def test_d17_folder_member_binary_is_omitted_not_fatal(monkeypatch, git_repo, brief, capsys):
@@ -787,6 +787,32 @@ def test_d34_one_cap_covers_diff_plus_repo(monkeypatch, git_repo, brief, tmp_pat
     with pytest.raises(SystemExit) as e:
         gr.main(["--file", str(brief), "--diff", "--repo", "src/b.py", "--max-bytes", "500", "--dry-run"])
     assert e.value.code == 3
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="named pipes are POSIX-only")
+def test_d35_tracked_file_replaced_by_fifo_does_not_hang(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("pipe.txt", "x\n")
+    git_repo.commit()
+    (git_repo.path / "pipe.txt").unlink()
+    os.mkfifo(git_repo.path / "pipe.txt")
+    refused(monkeypatch, git_repo, brief, ["pipe.txt"])
+    assert "not a regular file" in capsys.readouterr().err
+
+
+def test_g5_save_request_shows_the_retried_body(monkeypatch, tmp_path, brief):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
+    monkeypatch.setattr(gr, "output_token_limit", lambda *a, **k: None)
+    monkeypatch.setattr(gr.time, "sleep", lambda *a: None)
+    replies = iter([
+        (200, {"candidates": [{"content": {"parts": []}, "finishReason": "MAX_TOKENS"}]}),
+        (200, {"candidates": [{"content": {"parts": [{"text": "ok"}]}, "finishReason": "STOP"}]}),
+    ])
+    monkeypatch.setattr(gr, "call", lambda *a, **k: next(replies))
+    out = tmp_path / "req.json"
+    gr.main(["--file", str(brief), "--save-request", str(out)])
+    body = json.loads(out.read_text(encoding="utf-8"))
+    assert body["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
 
 
 def test_e2_secret_name():
