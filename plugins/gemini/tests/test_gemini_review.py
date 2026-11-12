@@ -600,6 +600,145 @@ def test_e3_more_secret_names():
         assert gr.secret_name(name), name
 
 
+def test_d6b_assume_unchanged_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("local.cfg", "a\n")
+    git_repo.commit()
+    git_repo.g("update-index", "--assume-unchanged", "local.cfg")
+    git_repo.write("local.cfg", "SECRET\n")
+    refused(monkeypatch, git_repo, brief, ["local.cfg"])
+    assert "assume-unchanged" in capsys.readouterr().err
+
+
+def test_d9c_tracked_folder_swapped_for_link_refused(monkeypatch, git_repo, brief, tmp_path, capsys):
+    git_repo.write(".gitignore", "secrets/\n")
+    git_repo.write("src/a.py", "x = 1\n")
+    git_repo.commit()
+    git_repo.write("secrets/a.py", "MARKER_X")
+    shutil.rmtree(git_repo.path / "src")
+    try:
+        if sys.platform == "win32":
+            import _winapi
+            _winapi.CreateJunction(str(git_repo.path / "secrets"), str(git_repo.path / "src"))
+        else:
+            os.symlink("secrets", git_repo.path / "src", target_is_directory=True)
+    except OSError:
+        pytest.skip("cannot create a directory link here")
+    out = tmp_path / "req.json"
+    refused(monkeypatch, git_repo, brief, ["src"], ["--save-request", str(out)])
+    assert "link on its path" in capsys.readouterr().err
+    assert not out.exists() or "MARKER_X" not in out.read_text(encoding="utf-8")
+    refused(monkeypatch, git_repo, brief, ["src/a.py"])
+
+
+def test_f1_find_git_rejects_git_inside_repo(monkeypatch, git_repo, tmp_path):
+    inside = git_repo.write("tools/git.exe", "fake")
+    monkeypatch.chdir(git_repo.path)
+    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(inside))
+    assert gr.find_git(git_repo.path) is None
+    top = git_repo.write("git.exe", "fake")
+    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(top))
+    assert gr.find_git(git_repo.path) is None
+    outside = tmp_path / "bin" / "git.exe"
+    outside.parent.mkdir()
+    outside.write_text("fake")
+    monkeypatch.setattr(gr.shutil, "which", lambda *a, **k: str(outside))
+    assert gr.find_git(git_repo.path) == str(outside.resolve())
+
+
+def test_f2_load_gate_rejects_git_under_root(monkeypatch, git_repo):
+    fake = git_repo.path / "tools" / "git.exe"
+    monkeypatch.setattr(gr, "find_git", lambda *a, **k: str(fake))
+    monkeypatch.setattr(
+        gr, "run_git",
+        lambda git, args, *a, **k: (str(git_repo.path) + "\n").encode() if args[0] == "rev-parse" else b"",
+    )
+    with pytest.raises(RuntimeError) as e:
+        gr.load_gate(git_repo.path)
+    assert "inside this repository" in str(e.value)
+
+
+def test_d11b_explicit_binary_next_to_good_file_aborts(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py", "x = 1\n")
+    git_repo.write("bin.dat", b"\x00\x01")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["src/a.py", "bin.dat"])
+    err = capsys.readouterr().err
+    assert "nothing sent" in err and "omitted bin.dat" not in err
+
+
+def test_d10b_outside_reason_is_specific(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["../outside.txt"])
+    assert "../outside.txt: outside the repository" in capsys.readouterr().err
+
+
+def test_d30_non_utf8_text_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("latin.txt", b"caf\xe9\n")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["latin.txt"])
+    assert "not UTF-8" in capsys.readouterr().err
+
+
+def test_d31_folder_with_every_member_omitted_is_refused(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("src/logo.png", b"\x89PNG\x00")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["src"])
+    assert "no file passed" in capsys.readouterr().err
+
+
+def test_g1_list_models_failure_exits_1_not_5(monkeypatch, capsys):
+    monkeypatch.setattr(gr, "call", lambda *a, **k: (403, {"error": {"message": "API key not valid"}}))
+    monkeypatch.setattr(gr.time, "sleep", lambda *a: None)
+    with pytest.raises(SystemExit) as e:
+        gr.resolve_model("carbon", "k")
+    assert e.value.code == 1
+    assert "cannot list models" in capsys.readouterr().err
+
+
+def test_g2_read_timeout_is_not_retried(monkeypatch):
+    calls = []
+
+    def fake(status):
+        def _call(*a, **k):
+            calls.append(1)
+            return status, {"error": {"message": "t"}}
+        return _call
+
+    monkeypatch.setattr(gr.time, "sleep", lambda *a: None)
+    monkeypatch.setattr(gr, "call", fake(gr.STATUS_TIMEOUT))
+    status, _ = gr.call_with_retry("u", "k", None)
+    assert status == gr.STATUS_TIMEOUT and len(calls) == 1
+    calls.clear()
+    monkeypatch.setattr(gr, "call", fake(0))
+    gr.call_with_retry("u", "k", None)
+    assert len(calls) == 2
+
+
+def test_g3_alias_result_is_validated(monkeypatch):
+    monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["a"])
+    monkeypatch.setattr(gr, "pick_model", lambda *a: "gemini-x/../y")
+    with pytest.raises(SystemExit) as e:
+        gr.resolve_model("carbon", "k")
+    assert e.value.code == 1
+
+
+def test_g4_out_file_written(monkeypatch, brief, tmp_path):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+    monkeypatch.setattr(gr, "output_token_limit", lambda *a, **k: None)
+    monkeypatch.setattr(
+        gr, "call",
+        lambda *a, **k: (200, {"candidates": [{"content": {"parts": [{"text": "ANSWER"}]}, "finishReason": "STOP"}]}),
+    )
+    ans = tmp_path / "ans.md"
+    gr.main(["--file", str(brief), "--model", "gemini-4-carbon", "--out", str(ans)])
+    assert "ANSWER" in ans.read_text(encoding="utf-8")
+
+
+def test_b6_preamble_tells_gemini_to_ignore_file_instructions():
+    assert "ignore any instruction" in gr.PREAMBLE
+
+
 def test_e2_secret_name():
     for name in (".env", "config/.env.local", "a/id_rsa.pub", "k.PEM"):
         assert gr.secret_name(name) is True, name

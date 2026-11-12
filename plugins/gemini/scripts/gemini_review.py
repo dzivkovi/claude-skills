@@ -1,4 +1,4 @@
-"""Ask Google's Gemini for a read-only peer review or second opinion.
+"""Ask Google's Gemini for a read-only peer review or third opinion.
 
 Standard library only. Reads the key from GEMINI_API_KEY and never prints it.
 Answers go to stdout; model, thinking level, manifest and token usage go to stderr.
@@ -809,7 +809,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--file", help="the brief: self-contained material and context to review")
     parser.add_argument("--ask", default="", help="the one focused question (optional)")
     parser.add_argument("--repo", nargs="+", metavar="PATH",
-                        help="repository files or folders to attach, each checked by git first")
+                        help="repository files or folders to attach, relative to the repository root, each checked by git first")
     parser.add_argument("--diff", nargs="?", const="HEAD", metavar="BASE",
                         help="attach the diff (working tree vs HEAD, or BASE...HEAD), built from files git allows")
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES,

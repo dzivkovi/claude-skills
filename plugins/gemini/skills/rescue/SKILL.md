@@ -47,7 +47,7 @@ Run it from inside the repository when you use `--repo`; paths are relative to t
 | Code | Meaning | What to do |
 |---|---|---|
 | 0 | answer printed | show it |
-| 1 | key missing, HTTP error, bad model id | show stderr; suggest `/gemini:setup` |
+| 1 | key missing, brief file missing or unreadable, HTTP error, bad model id | show stderr; for a key or HTTP problem suggest `/gemini:setup` |
 | 2 | usage error, or Python could not open the script | show stderr; if it says "can't open file", recompute the path from this skill's base directory |
 | 3 | `--repo` refused a file (or not in a git repo); nothing was sent | drop or replace the refused paths and run again; never copy a refused file's content into the brief |
 | 5 | unknown model alias | show the available list it printed |

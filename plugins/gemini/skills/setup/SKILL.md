@@ -25,6 +25,7 @@ If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_revi
 
 - Exit 0: ready. The output names the model (`carbon -> <id>, thinking high`) and whether git is found (needed only for `--repo`).
 - Exit 1 with `GEMINI_API_KEY is not set`: show the one-line fix exactly as printed. On Windows `setx` only reaches new shells, so the user must restart Claude Code after it. The key is read from the environment on every run and never stored or printed.
+- Exit 1 with `cannot list models: HTTP ...`: the key is invalid or the network is down; show stderr.
 - Exit 2: a usage error, or Python could not open the script (recompute the path from this skill's base directory). Exit 5: the `--model` alias matched nothing; show the available list it printed.
 
 Say which interpreter was used (`$PY`).

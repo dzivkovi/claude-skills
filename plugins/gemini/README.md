@@ -68,13 +68,13 @@ A request can take several minutes with thinking on (a 2,261-line diff took more
 
 ## How this compares with the Codex plugin
 
-The Codex plugin runs the Codex CLI with a read-only sandbox. The sandbox stops writes, not reads, and the plugin does no `.gitignore` handling: Codex reads files with ordinary shell commands, and whatever it reads goes to OpenAI's API. This plugin takes the opposite approach: Gemini does not explore at all, it gets what Claude chose and git allowed.
+The Codex plugin runs the Codex CLI with a read-only sandbox. The sandbox blocks writes while reads still go through, and the plugin does no `.gitignore` handling: Codex reads files with ordinary shell commands, and whatever it reads goes to OpenAI's API. This plugin takes the opposite approach: Gemini does not explore at all, it gets what Claude chose and git allowed.
 
-An earlier version let the Gemini CLI explore the repository itself, like Codex. Three review rounds kept finding ways its own `.gitignore` filtering let ignored content or names through (a search tool that skips the filter, launching from a subfolder, global and worktree excludes it never reads, `.geminiignore` negation, links, path case on Windows, skills and context files inlined into the prompt). `.gitignore` is a "do not commit" list, not a security boundary, and that CLI does not treat it as one. That mode is parked in issue #14.
+An earlier version let the Gemini CLI explore the repository itself, like Codex. Three review rounds kept finding ways its own `.gitignore` filtering let ignored content or names through (a search tool that skips the filter, launching from a subfolder, global and worktree excludes it never reads, `.geminiignore` negation, links, path case on Windows, skills and context files inlined into the prompt). `.gitignore` lists what not to commit; it was never meant as a security boundary, and that CLI does not treat it as one. That mode is parked in issue #14.
 
 ## The canary test
 
-A scratch repo held a unique marker string in a gitignored folder, a force-added ignored file, a file ignored only through `core.excludesFile`, a committed `.env`, a skip-worktree file with local edits, and behind a junction into the ignored folder. Each was named with `--repo` (2026-11-12, Windows 11):
+A scratch repo held a unique marker string in a gitignored folder, a force-added ignored file, a file ignored only through `core.excludesFile`, a committed `.env`, a skip-worktree file with local edits, and a path that reaches the ignored folder through a junction. Each was named with `--repo` (2026-11-12, Windows 11):
 
 | Case | Named with `--repo` | Result |
 |---|---|---|
