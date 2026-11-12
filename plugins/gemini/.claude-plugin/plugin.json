@@ -1,0 +1,9 @@
+{
+  "name": "gemini",
+  "version": "0.1.0",
+  "description": "Ask Google's Gemini for a read-only outside review or third opinion: /gemini:review, /gemini:rescue, /gemini:setup.",
+  "author": {
+    "name": "Daniel Zivkovic"
+  },
+  "repository": "https://github.com/dzivkovi/claude-skills"
+}
