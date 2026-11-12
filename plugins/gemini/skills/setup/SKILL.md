@@ -27,6 +27,7 @@ If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_revi
 - Exit 1 with `GEMINI_API_KEY is not set`: show the one-line fix exactly as printed. On Windows `setx` only reaches new shells, so the user must restart Claude Code after it.
 - Repo mode is used only by `/gemini:rescue`; `/gemini:review` always uses file mode, so do not say review "can use repo mode".
 - `repo mode: unavailable`: `/gemini:rescue` still works in file mode. Show the reason; offer `npm i -g @google/gemini-cli` only when the CLI is missing.
+- Exit 2: a usage error, or Python could not open the script (recompute the path from this skill's base directory). Exit 5: the `--model` alias matched nothing; show the available list it printed.
 
 Say which interpreter was used (`$PY`).
 

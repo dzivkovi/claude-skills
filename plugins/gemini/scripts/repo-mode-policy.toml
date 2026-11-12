@@ -32,3 +32,21 @@ argsPattern = '"respect_gemini_ignore":false'
 decision = "deny"
 priority = 999
 deny_message = "gemini_review repo mode keeps .geminiignore filtering on."
+
+# Windows: the CLI's ignore check compares paths case-sensitively against the
+# project root (C:\...), so a lowercase drive letter (c:\...) skipped it.
+[[rule]]
+toolName = "read_file"
+argsPattern = '"file_path":"[a-z]:'
+decision = "deny"
+priority = 999
+deny_message = "Use a path relative to the repository root."
+
+# The CLI also allows its own project temp folder, which holds transcripts of
+# earlier interactive sessions.
+[[rule]]
+toolName = ["read_file", "list_directory", "glob"]
+argsPattern = '\.gemini[\\/]+tmp'
+decision = "deny"
+priority = 999
+deny_message = "The Gemini CLI temp folder is out of scope."

@@ -2,7 +2,7 @@
 name: review
 description: "Ask Google's Gemini to review the current diff (working tree, or <base>...HEAD) as an outside reviewer and return numbered findings with severities, then Claude's own read. Never applies fixes. Use for '/gemini:review', 'ask Gemini to review this', 'Gemini review', 'Gemini's view on this diff', 'third opinion on this change', 'adversarial review with Gemini'. With 'ask both' or 'all experts', also run the Codex review in parallel. Not for a bare 'second opinion' or 'ask Codex' (those stay with the Codex plugin)."
 argument-hint: "[--base <ref>] [--model <alias|id>] [--thinking low|high] [focus ...]"
-allowed-tools: Bash, Write, Read
+allowed-tools: Bash, Write, Read, Agent
 ---
 
 # Gemini review
@@ -28,14 +28,16 @@ Gemini sees one self-contained file that you write. It does not read the repo. R
    <the diff in a fenced block>
    ```
 
-3. **Run file mode** with the interpreter rule below. Use Bash `timeout: 600000`, or `run_in_background: true` for a large diff or when running beside Codex.
+3. **Run file mode** as one Bash call (variables do not carry over between calls). Use Bash `run_in_background: true` with stdout and stderr redirected to scratch files: a review with high thinking can take several minutes, and the script may retry once.
 
    ```bash
    for c in python3 python "py -3"; do $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1 && { PY="$c"; break; }; done
-   $PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --file "<scratch file>" [--model <m>] [--thinking <t>]
+   [ -n "$PY" ] || { echo "No Python 3.10+ found (tried python3, python, py -3)."; exit 1; }
+   $PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --file "<scratch file>" [--model <m>] [--thinking <t>] > "<scratch>/gemini-out.md" 2> "<scratch>/gemini-err.txt"
+   echo "exit=$?" > "<scratch>/gemini-exit.txt"
    ```
 
-   If `${CLAUDE_PLUGIN_ROOT}` is empty, the script is at `../../scripts/gemini_review.py` relative to this skill's base directory. Never chain interpreters with `||`.
+   If `${CLAUDE_PLUGIN_ROOT}` is empty, use `../../scripts/gemini_review.py` resolved from this skill's base directory. Never chain interpreters with `||`: the script's exit codes would trigger the next one.
 
 4. **Answer in two clearly separated parts:**
    - `## Gemini's findings`: stdout verbatim, then the `gemini_review: mode=file model=... usage=...` token line from stderr.
@@ -47,11 +49,12 @@ Gemini sees one self-contained file that you write. It does not read the repo. R
 |---|---|---|
 | 0 | answer printed | show it |
 | 1 | key missing, HTTP error, rejected model | show stderr; suggest `/gemini:setup` |
-| 2 | unknown model alias | show the available list it printed |
+| 2 | usage error, or Python could not open the script | show stderr; if it says "can't open file", recompute the path from this skill's base directory |
+| 5 | unknown model alias | show the available list it printed |
 
 ## Ask both
 
-On "ask both" or "all experts", start the Codex review (`codex:codex-rescue` agent or `/codex:review`) and this script in background Bash in the same message, then present Gemini's findings, Codex's findings and your read as three sections.
+On "ask both" or "all experts", start the `codex:codex-rescue` agent (Agent tool) with a review-only ask about the same diff, and this script in background Bash, in the same message. Then present Gemini's findings, Codex's findings and your read as three sections.
 
 ## Confidentiality
 

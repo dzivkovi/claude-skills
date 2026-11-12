@@ -74,7 +74,7 @@ A third kind of artifact, beside claude.ai skill zips and Claude Code workflow s
 
 Current plugins:
 
-- **gemini** (v0.1.0) - Google's Gemini as a third expert with the Codex plugin's command shape: `/gemini:review`, `/gemini:rescue` (read-only; repo mode drives the Gemini CLI, file mode sends one file to the REST API), `/gemini:setup`. One stdlib script, `plugins/gemini/scripts/gemini_review.py`, plus a bundled CLI policy and settings file next to it. Tests: `python -m pytest plugins/gemini/tests -q`. Its confidentiality controls are load-bearing and were each found by testing, not by reading docs: before touching repo mode, read the plugin README's Confidentiality section and rerun its canary (check the CLI session transcript under `~/.gemini/tmp/`, not only the answer).
+- **gemini** (v0.1.0) - Google's Gemini as a third expert with the Codex plugin's command shape: `/gemini:review`, `/gemini:rescue` (read-only; repo mode drives the Gemini CLI, file mode sends one file to the REST API), `/gemini:setup`. One stdlib script, `plugins/gemini/scripts/gemini_review.py`, plus a bundled CLI policy and settings file next to it. Tests: `python -m pytest plugins/gemini/tests -q`. Its confidentiality controls are load-bearing, and each came from a canary run or a review of the Gemini CLI source: before touching repo mode, read the plugin README's Confidentiality section and rerun its canary (check the CLI session transcript under `~/.gemini/tmp/`, not only the answer).
 
 ## Key Architectural Notes
 

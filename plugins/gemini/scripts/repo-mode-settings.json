@@ -6,6 +6,7 @@
   },
   "context": {
     "fileName": "GEMINI_REVIEW_PLUGIN_NONE.md",
+    "includeDirectoryTree": false,
     "fileFiltering": {
       "respectGitIgnore": true,
       "respectGeminiIgnore": true

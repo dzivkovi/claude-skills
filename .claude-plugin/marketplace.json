@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "gemini",
-      "description": "Ask Google's Gemini for a read-only peer review or second opinion: /gemini:review, /gemini:rescue, /gemini:setup.",
+      "description": "Ask Google's Gemini for a read-only outside review or third opinion: /gemini:review, /gemini:rescue, /gemini:setup.",
       "version": "0.1.0",
       "author": {
         "name": "Daniel Zivkovic"
