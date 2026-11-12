@@ -676,6 +676,44 @@ def collect_repo_attachments(args: list[str], max_bytes: int, cwd: Path) -> list
 BASE_REF_RE = re.compile(r"[A-Za-z0-9._/@^~-]{1,200}")
 
 
+def file_problem(root: Path, rel: str) -> str | None:
+    """Why the working file may not be read for a diff (not regular, hard link), or None."""
+    try:
+        st = os.lstat(root / rel)
+    except OSError:
+        return None  # absent: a deletion, handled separately
+    if not stat.S_ISREG(st.st_mode):
+        return "not a regular file"
+    if st.st_nlink > 1:
+        return "a hard link (its content may also live under an ignored or outside name)"
+    return None
+
+
+def _deleted_refusals(gate: Gate, deleted: list[str]) -> dict[str, str]:
+    """Reasons to leave a deleted file's hunk out; a deleted path missing here is allowed."""
+    reasons: dict[str, str] = {}
+    if not deleted:
+        return reasons
+    payload = b"".join(p.encode("utf-8") + b"\0" for p in deleted)
+    ignored = set(_z_paths(run_git(
+        gate.git, ["check-ignore", "--no-index", "-z", "--stdin"], gate.root, payload, ok_codes=(0, 1))))
+    raw = run_git(gate.git, ["check-attr", "-z", "filter", "--stdin"], gate.root, payload).split(b"\0")
+    if raw and raw[-1] == b"":
+        raw.pop()
+    if len(raw) % 3:
+        raise RuntimeError("git check-attr output could not be parsed")
+    filtered = {raw[i].decode("utf-8") for i in range(0, len(raw), 3)
+                if raw[i + 2].decode("utf-8") not in HARMLESS_FILTERS}
+    for path in deleted:
+        if path in ignored:
+            reasons[path] = "deleted, and matches .gitignore or an exclude file"
+        elif path in filtered:
+            reasons[path] = "deleted, and has a content filter in .gitattributes"
+        elif secret_name(path):
+            reasons[path] = "deleted, and a secret file name"
+    return reasons
+
+
 def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
     """The diff, built by the script from files the gate allows.
 
@@ -690,11 +728,23 @@ def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
         gate = load_gate(cwd)
         spec = ["HEAD"] if base == "HEAD" else [f"{base}...HEAD"]
         names = _z_paths(run_git(gate.git, ["diff", "--name-only", "-z", "--no-renames", *spec, "--"], gate.root))
+        # A file deleted in the change is no longer in git's lists; its deletion hunk
+        # (old content, read from git's objects) is allowed when the same rules pass.
+        deleted = [p for p in names if p not in gate.tracked and p not in gate.untracked
+                   and not (gate.root / p).exists()]
+        deleted_refused = _deleted_refusals(gate, deleted)
         allowed: list[str] = []
         for path in names:
-            reason = ineligible_reason(gate, path)
-            if not reason and link_on_path(gate.root, path):
-                reason = f"a link on its path ({link_on_path(gate.root, path)})"
+            if path in deleted_refused or path in deleted:
+                reason = deleted_refused.get(path)
+            else:
+                reason = ineligible_reason(gate, path)
+                if not reason and link_on_path(gate.root, path):
+                    reason = f"a link on its path ({link_on_path(gate.root, path)})"
+                if not reason and base == "HEAD":
+                    # Working-tree diff: git reads the file itself, so apply the same
+                    # file checks as --repo (regular file, no hard link).
+                    reason = file_problem(gate.root, path)
             if reason:
                 print(f"gemini_review: left out of the diff: {path}: {reason}", file=sys.stderr)
             else:
@@ -707,7 +757,7 @@ def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
                  *allowed[i:i + 100]],
                 gate.root, literal_paths=True,
             ))
-    except RuntimeError as exc:
+    except (RuntimeError, UnicodeDecodeError) as exc:
         fail(f"--diff refused, nothing sent: {exc}", EXIT_REFUSED)
     raw = b"".join(chunks)
     if not raw.strip():
@@ -835,10 +885,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.repo or args.diff:
         if not args.file:
             parser.error("--repo and --diff need --file: the brief that says what to look at and why")
+        remaining = args.max_bytes
         if args.diff:
-            attachments.append(collect_diff(args.diff, args.max_bytes, Path.cwd()))
+            attachments.append(collect_diff(args.diff, remaining, Path.cwd()))
+            remaining -= len(attachments[0].text.encode("utf-8"))  # one cap for everything attached
         if args.repo:
-            attachments += collect_repo_attachments(args.repo, args.max_bytes, Path.cwd())
+            attachments += collect_repo_attachments(args.repo, remaining, Path.cwd())
         if args.dry_run:
             # No model lookup and no network: the body is what would be sent, minus
             # the model's output limit.
