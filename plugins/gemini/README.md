@@ -35,7 +35,7 @@ Repo mode also needs the Gemini CLI (`npm i -g @google/gemini-cli`). Without it,
 - **Repo mode** (default when available): the Gemini CLI reads the files it needs in its read-only plan mode. A reviewer that reads the code catches defects a reviewer reading only a summary misses.
 - **File mode** (`--file-only`, or the fallback): Gemini sees only one file Claude writes. Easier to check, but it only knows what Claude put in.
 - `--resume` continues the last repo-mode session. When Claude has the session id the previous run printed, it passes that id, so it does not continue a session you started by hand. Without one (for example in a new conversation), `--resume` takes the latest session in the repository and fails if there is none.
-- A repo-mode run can take ten minutes or more with thinking on, so the skill runs it in the background and Claude reads the answer when it finishes. The script stops a run at 20 minutes.
+- A repo-mode run can take ten minutes or more with thinking on, and a large diff in file mode more than five, so the skills run both in the background and Claude reads the answer when it finishes. The script stops a repo-mode run at 20 minutes and a file-mode request at 15.
 
 "Ask both" or "all experts" runs Codex and Gemini in parallel. A bare "second opinion" is left to the Codex plugin so the two do not compete for it.
 

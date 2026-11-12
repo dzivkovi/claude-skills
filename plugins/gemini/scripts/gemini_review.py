@@ -35,6 +35,7 @@ import http.client
 import json
 import os
 import re
+import secrets
 import shutil
 import signal
 import subprocess
@@ -63,7 +64,9 @@ EXCLUDED_TOKENS = {
     "thinking",
 }
 KEY_VAR = "GEMINI_API_KEY"
-TIMEOUT_S = 300
+# A 2,261-line diff with thinking high took longer than 300 s on 2026-11-11, so file
+# mode allows 15 minutes; the skills run it in background Bash.
+TIMEOUT_S = 900
 # A repo-mode run took over 9 minutes on 2026-11-11 (2 to 4 minute thinking turns), so
 # skills run repo mode in background Bash, which has no 600 s foreground cap.
 REPO_TIMEOUT_S = 1200
@@ -102,6 +105,7 @@ PREAMBLE = (
 # user text (a long argv hung a CLI on Windows, and argv passes through cmd.exe there).
 REPO_PROMPT = (
     "The text above is your brief. You are an independent read-only peer reviewer. "
+    "Use file paths relative to the repository root. "
     "Read only the repository files the brief needs, starting with the ones it names, and stop "
     "exploring as soon as you can answer. Give numbered findings "
     "with a severity (P0 blocker, P1 should fix, P2 nice to have) and cite file paths. "
@@ -382,9 +386,12 @@ def run_bounded(
     return proc.returncode, stdout, stderr
 
 
-def repo_mode_status() -> tuple[bool, str, str | None]:
-    """(available, reason when not, CLI version). A capability check, not a version guess."""
-    exe = find_gemini()
+def repo_mode_status(root: Path | None = None) -> tuple[bool, str, str | None]:
+    """(available, reason when not, CLI version). A capability check, not a version guess.
+
+    root is the git root: the probe never runs a gemini found inside it.
+    """
+    exe = find_gemini(root)
     if not exe:
         return False, "gemini CLI not found on PATH (npm i -g @google/gemini-cli)", None
     try:
@@ -425,7 +432,7 @@ def run_setup(args: argparse.Namespace) -> None:
         except SystemExit:  # the reason is already on stderr; keep reporting the rest
             print(f"model: {args.model} could not be resolved (see the error above)")
             ok = False
-    available, reason, version = repo_mode_status()
+    available, reason, version = repo_mode_status(git_root(Path.cwd()))
     print(f"cli: gemini {version}" if version else "cli: not found (npm i -g @google/gemini-cli)")
     if available:
         source, _ = system_settings_paths(os.environ)
@@ -513,6 +520,10 @@ def prepare_settings(
     """
     source, _ = system_settings_paths(environ)
     merged = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    # A fixed replacement name could be shipped by a hostile repo with @imports of
+    # ignored files, which the CLI inlines without a gitignore check. A random name
+    # per run cannot be planted.
+    merged["context"]["fileName"] = f"GEMINI_REVIEW_{secrets.token_hex(16)}.md"
     note = None
     if source.is_file():
         merged = deep_merge(load_settings_json(source), merged)
@@ -804,7 +815,9 @@ def has_previous_session(exe: str, env: dict, cwd: Path) -> bool:
 
 
 def run_repo_mode(args: argparse.Namespace, key: str) -> None:
-    available, reason, version = repo_mode_status()
+    cwd = Path.cwd().resolve()
+    root = git_root(cwd)
+    available, reason, version = repo_mode_status(root)
     if not available:
         fail(f"repo mode unavailable: {reason}", EXIT_REPO_UNAVAILABLE)
     if not args.brief:
@@ -819,8 +832,6 @@ def run_repo_mode(args: argparse.Namespace, key: str) -> None:
     if resume and resume != "latest" and not SESSION_ID_RE.match(resume):
         fail(f"session id {resume!r} has characters outside [A-Za-z0-9-]")
 
-    cwd = Path.cwd().resolve()
-    root = git_root(cwd)
     if workspace_settings_present(cwd, root):
         fail(
             "repo mode unavailable: repo carries Gemini CLI workspace settings (.gemini/settings.json), "
@@ -907,6 +918,8 @@ def run_cli(
     if not response.strip():
         fail(f"Gemini CLI returned no answer: {stdout.strip()[:600]}")
 
+    # Fingerprint before writing --out, which may itself land inside the repository.
+    after = tree_fingerprint(root) if before is not None else None
     print(response)
     if args.out:
         Path(args.out).write_text(response + "\n", encoding="utf-8")
@@ -914,14 +927,12 @@ def run_cli(
         f"gemini_review: mode=repo model={model} session={session} tokens={tokens} tools={tools}",
         file=sys.stderr,
     )
-    if before is not None:
-        after = tree_fingerprint(root)
-        if after is not None and after != before:
-            paths = changed_paths(before, after)
-            fail(
-                "WARNING: the working tree changed during this read-only run: " + ", ".join(paths),
-                EXIT_TREE_CHANGED,
-            )
+    if before is not None and after is not None and after != before:
+        fail(
+            "WARNING: the working tree changed during this read-only run: "
+            + ", ".join(changed_paths(before, after)),
+            EXIT_TREE_CHANGED,
+        )
 
 
 # ---------------------------------------------------------------- entry point

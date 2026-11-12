@@ -48,12 +48,13 @@ For `--resume`, pass the `session=<id>` value from the last run's `gemini_review
 
 ## File mode
 
-Write one self-contained scratch file outside the repo with the ask, the context, and the relevant code quoted in fenced blocks (never gitignored files, `.env` values or secrets). File mode may run in the foreground with Bash `timeout: 600000`:
+Write one self-contained scratch file outside the repo with the ask, the context, and the relevant code quoted in fenced blocks (never gitignored files, `.env` values or secrets). Run it with Bash `run_in_background: true` too: with thinking high a large file can take more than five minutes.
 
 ```bash
 for c in python3 python "py -3"; do $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1 && { PY="$c"; break; }; done
 [ -n "$PY" ] || { echo "No Python 3.10+ found (tried python3, python, py -3)."; exit 1; }
-$PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --file "<scratch file>" [--model <m>] [--thinking <t>]
+$PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --file "<scratch file>" [--model <m>] [--thinking <t>] > "<scratch>/gemini-out.md" 2> "<scratch>/gemini-err.txt"
+echo "exit=$?" > "<scratch>/gemini-exit.txt"
 ```
 
 ## Exit codes

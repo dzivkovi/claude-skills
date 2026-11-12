@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -40,7 +41,7 @@ def _ok_response():
 def _setup_ready(monkeypatch, version="0.35.2"):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
     monkeypatch.setattr(gr, "list_models", lambda *a, **k: ["gemini-4-carbon"])
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (True, "", version))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", version))
     missing = Path(__file__).parent / "no-such-dir"
     monkeypatch.setattr(
         gr, "system_settings_paths",
@@ -48,6 +49,7 @@ def _setup_ready(monkeypatch, version="0.35.2"):
     )
     monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: False)
     monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
+    monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
     monkeypatch.delenv("GEMINI_CLI_SYSTEM_SETTINGS_PATH", raising=False)
 
 
@@ -148,7 +150,7 @@ def test_t09_key_fix_hint():
 
 def test_t10_setup_without_key(monkeypatch, capsys):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (False, "x", None))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "x", None))
     with pytest.raises(SystemExit) as e:
         gr.main(["--setup"])
     assert e.value.code == 1
@@ -169,7 +171,7 @@ def test_t11_setup_ready(monkeypatch, capsys):
 
 def test_t12_setup_repo_unavailable(monkeypatch, capsys):
     _setup_ready(monkeypatch)
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (False, "gemini CLI not found on PATH", None))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "gemini CLI not found on PATH", None))
     gr.main(["--setup"])
     out = capsys.readouterr().out
     assert "repo mode: unavailable" in out
@@ -214,9 +216,15 @@ def test_t16_prepare_settings_keeps_existing_system_settings(tmp_path):
     work.mkdir()
     path, note = gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(tmp_path / "none.json")}, work)
     assert path.parent == work and note is None
-    assert json.loads(path.read_text(encoding="utf-8")) == json.loads(
-        gr.SETTINGS_PATH.read_text(encoding="utf-8")
-    )
+    got = json.loads(path.read_text(encoding="utf-8"))
+    want = json.loads(gr.SETTINGS_PATH.read_text(encoding="utf-8"))
+    name = got["context"].pop("fileName")
+    want["context"].pop("fileName")
+    assert got == want
+    # A random context-file name per run, so a hostile repo cannot plant it.
+    assert re.fullmatch(r"GEMINI_REVIEW_[0-9a-f]{32}\.md", name)
+    path2, _ = gr.prepare_settings({"GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(tmp_path / "none.json")}, work)
+    assert json.loads(path2.read_text(encoding="utf-8"))["context"]["fileName"] != name
 
     source = tmp_path / "system.json"
     source.write_text(
@@ -301,7 +309,7 @@ def test_t19_repo_unavailable_exits_3(monkeypatch, tmp_path):
     f = tmp_path / "brief.md"
     f.write_text("brief", encoding="utf-8")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (False, "gemini CLI not found on PATH", None))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (False, "gemini CLI not found on PATH", None))
     monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
     monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
     with pytest.raises(SystemExit) as e:
@@ -350,7 +358,11 @@ def test_t20_policy_and_settings_files():
     assert settings["context"]["fileName"] == "GEMINI_REVIEW_PLUGIN_NONE.md"
     assert settings["context"]["includeDirectoryTree"] is False
     assert any(
-        r.get("decision") == "deny" and "read_file" in names(r) and "[a-z]:" in r.get("argsPattern", "")
+        r.get("decision") == "deny" and "read_file" in names(r) and r"\.\." in r.get("argsPattern", "")
+        for r in rules
+    )
+    assert any(
+        r.get("decision") == "deny" and "read_file" in names(r) and "[A-Za-z]:" in r.get("argsPattern", "")
         for r in rules
     )
     assert any(
@@ -408,7 +420,7 @@ def test_t26_unreadable_system_settings_block_repo_mode(monkeypatch, tmp_path, c
     bad.write_text("{bad", encoding="utf-8")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
     monkeypatch.setenv("GEMINI_CLI_SYSTEM_SETTINGS_PATH", str(bad))
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (True, "", "0.35.2"))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", "0.35.2"))
     monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
     monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: False)
     monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
@@ -422,7 +434,7 @@ def test_t28_workspace_settings_block_repo_mode(monkeypatch, tmp_path, capsys):
     f = tmp_path / "brief.md"
     f.write_text("brief", encoding="utf-8")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
-    monkeypatch.setattr(gr, "repo_mode_status", lambda: (True, "", "0.35.2"))
+    monkeypatch.setattr(gr, "repo_mode_status", lambda *a, **k: (True, "", "0.35.2"))
     monkeypatch.setattr(gr, "git_root", lambda *a, **k: None)
     monkeypatch.setattr(gr, "workspace_settings_present", lambda *a, **k: True)
     monkeypatch.setattr(gr, "user_settings_blocker", lambda *a, **k: None)
