@@ -481,6 +481,125 @@ def test_d19_inherited_git_dir_is_ignored(monkeypatch, git_repo, brief, tmp_path
     assert "attaching 1 files" in capsys.readouterr().err
 
 
+def test_d20_empty_filter_value_does_not_shift_the_crypt_check(monkeypatch, git_repo, brief, capsys):
+    # `filter=` prints an empty value; dropping it once shifted later triples and let z.txt through.
+    git_repo.write(".gitattributes", "a.txt filter=\nz.txt filter=git-crypt\n")
+    git_repo.write("a.txt", "a\n")
+    git_repo.write("z.txt", "z\n")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["z.txt"])
+    assert "content filter" in capsys.readouterr().err
+
+
+def test_d21_explicit_binary_aborts_even_after_its_folder(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("sub/a.py", "x = 1\n")
+    git_repo.write("sub/s.bin", b"\x00\x01")
+    git_repo.commit()
+    refused(monkeypatch, git_repo, brief, ["sub", "sub/s.bin"])
+    refused(monkeypatch, git_repo, brief, ["sub/s.bin", "sub"])
+
+
+def test_d22_large_binary_under_folder_is_omitted_not_a_size_overflow(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("docs/readme.md", "hello\n")
+    git_repo.write("docs/big.png", b"\x89PNG\x00" + b"\x01" * 3000)
+    git_repo.commit()
+    dry_run(monkeypatch, git_repo, brief, ["docs"], ["--max-bytes", "1000"])
+    err = capsys.readouterr().err
+    assert "omitted docs/big.png" in err and "attaching 1 files" in err
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="case-insensitive paths are a Windows behavior")
+def test_d23_folder_name_case_is_folded_on_windows(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("sub/a.py")
+    git_repo.commit()
+    dry_run(monkeypatch, git_repo, brief, ["SUB"])
+    assert "sub/a.py" in capsys.readouterr().err
+
+
+def test_d24_dry_run_checks_the_brief(monkeypatch, git_repo, tmp_path):
+    git_repo.write("src/a.py")
+    git_repo.commit()
+    with pytest.raises(SystemExit) as e:
+        dry_run(monkeypatch, git_repo, tmp_path / "missing.md", ["src/a.py"])
+    assert e.value.code == 1
+
+
+def test_d25_hardlink_is_refused(monkeypatch, git_repo, brief, tmp_path, capsys):
+    outside = tmp_path / "outside_secret.txt"
+    outside.write_text("TOPSECRET\n", encoding="utf-8")
+    git_repo.write("README.md", "hi\n")
+    git_repo.commit()
+    try:
+        os.link(outside, git_repo.path / "notes.txt")
+    except OSError as exc:
+        pytest.skip(f"cannot create a hard link: {exc}")
+    refused(monkeypatch, git_repo, brief, ["notes.txt"])
+    assert "hard link" in capsys.readouterr().err
+
+
+def test_d26_directory_symlink_elsewhere_does_not_break_other_files(monkeypatch, git_repo, brief, capsys):
+    git_repo.write("d/inner.txt", "x\n")
+    git_repo.write("ok.py", "y = 1\n")
+    git_repo.commit()
+    shutil.rmtree(git_repo.path / "d")
+    try:
+        os.symlink(str(git_repo.path), git_repo.path / "d", target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"cannot create symlink: {exc}")
+    dry_run(monkeypatch, git_repo, brief, ["ok.py"])
+    assert "attaching 1 files" in capsys.readouterr().err
+
+
+def diff_repo(git_repo):
+    git_repo.write(".gitignore", "private/\n")
+    git_repo.write("src/a.py", "x = 1\n")
+    git_repo.write("private/notes.md", "old\n")
+    git_repo.write(".env", "TOKEN=old\n")
+    git_repo.commit(".gitignore", "src/a.py")
+    git_repo.commit("private/notes.md", ".env", force=True)
+    git_repo.write("src/a.py", "x = 2\n")
+    git_repo.write("private/notes.md", "TOPSECRET_DIFF\n")
+    git_repo.write(".env", "TOKEN=TOPSECRET_ENV\n")
+
+
+def test_d27_diff_leaves_out_refused_files(monkeypatch, git_repo, brief, tmp_path, capsys):
+    diff_repo(git_repo)
+    out = tmp_path / "req.json"
+    monkeypatch.chdir(git_repo.path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(gr, "call", no_network)
+    gr.main(["--file", str(brief), "--diff", "--dry-run", "--save-request", str(out)])
+    sent = out.read_text(encoding="utf-8")
+    err = capsys.readouterr().err
+    assert "x = 2" in sent
+    assert "TOPSECRET" not in sent
+    assert "left out of the diff: private/notes.md" in err
+    assert "left out of the diff: .env" in err
+
+
+def test_d28_diff_with_nothing_allowed_is_refused(monkeypatch, git_repo, brief):
+    diff_repo(git_repo)
+    git_repo.g("checkout", "--", "src/a.py")
+    monkeypatch.chdir(git_repo.path)
+    monkeypatch.setattr(gr, "call", no_network)
+    with pytest.raises(SystemExit) as e:
+        gr.main(["--file", str(brief), "--diff", "--dry-run"])
+    assert e.value.code == 3
+
+
+def test_d29_diff_base_must_be_a_plain_ref(monkeypatch, git_repo, brief):
+    monkeypatch.chdir(git_repo.path)
+    with pytest.raises(SystemExit) as e:
+        gr.main(["--file", str(brief), "--diff", "main;rm -rf", "--dry-run"])
+    assert e.value.code == 1
+
+
+def test_e3_more_secret_names():
+    for name in (".envrc", ".git-credentials", "credentials.json", "service-account-prod.json",
+                 "prod.tfvars", "k.ppk", "store.jks"):
+        assert gr.secret_name(name), name
+
+
 def test_e2_secret_name():
     for name in (".env", "config/.env.local", "a/id_rsa.pub", "k.PEM"):
         assert gr.secret_name(name) is True, name

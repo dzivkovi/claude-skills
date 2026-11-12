@@ -80,12 +80,15 @@ EXIT_UNKNOWN_ALIAS = 5
 
 MODEL_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 SECRET_NAMES = [
-    ".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "id_rsa*", "id_ed25519*",
-    "id_ecdsa*", "id_dsa*", ".npmrc", ".pypirc", ".netrc", "_netrc",
+    ".env", ".env.*", ".envrc", "*.pem", "*.key", "*.p12", "*.pfx", "*.ppk", "*.jks",
+    "*.keystore", "*.kdbx", "id_rsa*", "id_ed25519*", "id_ecdsa*", "id_dsa*", ".npmrc",
+    ".pypirc", ".netrc", "_netrc", ".git-credentials", "credentials", "credentials.json",
+    "service-account*.json", "*.tfvars", "*.tfstate", "secrets.*",
 ]
 SECRET_NAME_EXCEPTIONS = [".env.example", ".env.sample", ".env.template"]
 HARMLESS_FILTERS = {"unspecified", "unset", "lfs"}
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+REPARSE_TAG_NAME_SURROGATE = 0x20000000  # set on symlinks, junctions and other path redirects
 
 PREAMBLE = (
     "You are an independent peer reviewer from outside the team that wrote this material. "
@@ -286,6 +289,7 @@ class Gate:
     """git's view of the repository, gathered once."""
 
     root: Path
+    git: str = ""
     tracked: dict[str, str] = field(default_factory=dict)  # path -> mode
     untracked: set[str] = field(default_factory=set)
     flagged: set[str] = field(default_factory=set)  # skip-worktree or assume-unchanged
@@ -340,12 +344,15 @@ def git_env() -> dict:
 
 
 def run_git(git: str, args: list[str], cwd: Path, stdin: bytes | None = None,
-            ok_codes: tuple[int, ...] = (0,)) -> bytes:
+            ok_codes: tuple[int, ...] = (0,), literal_paths: bool = False) -> bytes:
     """stdout of a git command; raises RuntimeError on any other exit code."""
+    env = git_env()
+    if literal_paths:
+        env["GIT_LITERAL_PATHSPECS"] = "1"  # file names are never glob patterns
     try:
         out = subprocess.run(
             [git, "-c", "core.fsmonitor=false", "-c", "core.quotepath=false", *args],
-            cwd=cwd, input=stdin, capture_output=True, timeout=120, env=git_env(),
+            cwd=cwd, input=stdin, capture_output=True, timeout=120, env=env,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError(f"git {args[0]} failed: {exc}") from exc
@@ -394,14 +401,27 @@ def load_gate(cwd: Path) -> Gate:
         tag, _, name = record.partition(" ")
         if name and (tag == "S" or tag.islower()):
             gate.flagged.add(name)
-    candidates = sorted(set(gate.tracked) | gate.untracked)
+    # A path beyond a symbolic link makes check-ignore fail the whole batch; such
+    # paths are refused anyway (link_on_path), so leave them out of the batch.
+    gate.git = git
+    candidates = sorted(p for p in set(gate.tracked) | gate.untracked if not _linked_parent(root, p))
     if candidates:
         payload = b"".join(c.encode("utf-8") + b"\0" for c in candidates)
         # Exit 1 means "nothing matched", not failure.
         gate.ignored = set(_z_paths(run_git(
             git, ["check-ignore", "--no-index", "-z", "--stdin"], root, payload, ok_codes=(0, 1))))
-        fields = _z_paths(run_git(git, ["check-attr", "-z", "filter", "--stdin"], root, payload))
-        for i in range(0, len(fields) - 2, 3):  # path, attribute, value
+        # Keep empty fields: `filter=` prints an empty value, and dropping it would
+        # shift every later (path, attribute, value) triple.
+        raw = run_git(git, ["check-attr", "-z", "filter", "--stdin"], root, payload).split(b"\0")
+        if raw and raw[-1] == b"":
+            raw.pop()
+        if len(raw) % 3:
+            raise RuntimeError("git check-attr output could not be parsed")
+        try:
+            fields = [f.decode("utf-8") for f in raw]
+        except UnicodeDecodeError as exc:
+            raise RuntimeError("git check-attr output is not UTF-8") from exc
+        for i in range(0, len(fields), 3):  # path, attribute, value
             # Any content filter except LFS: git-crypt uses git-crypt[-key], transcrypt
             # uses crypt[-context], and an unlocked work tree holds the plaintext.
             if fields[i + 2] not in HARMLESS_FILTERS:
@@ -436,6 +456,37 @@ def ineligible_reason(gate: Gate, path: str) -> str | None:
     return None
 
 
+def _is_link_reparse(st: os.stat_result) -> bool:
+    """A Windows reparse point that redirects to another path (symlink, junction).
+
+    Junctions are not S_ISLNK. Cloud placeholders (OneDrive, Dropbox) are reparse
+    points too but not name surrogates, so a synced repository keeps working.
+    """
+    if not getattr(st, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT:
+        return False
+    tag = getattr(st, "st_reparse_tag", None)
+    return True if tag is None else bool(tag & REPARSE_TAG_NAME_SURROGATE)
+
+
+_LINK_DIR_CACHE: dict[Path, bool] = {}
+
+
+def _linked_parent(root: Path, rel: str) -> bool:
+    """True when a folder on the way to rel is a link (cached per folder)."""
+    current = root
+    for part in PurePosixPath(rel).parts[:-1]:
+        current = current / part
+        if current not in _LINK_DIR_CACHE:
+            try:
+                st = os.lstat(current)
+                _LINK_DIR_CACHE[current] = stat.S_ISLNK(st.st_mode) or _is_link_reparse(st)
+            except OSError:
+                _LINK_DIR_CACHE[current] = False
+        if _LINK_DIR_CACHE[current]:
+            return True
+    return False
+
+
 def link_on_path(root: Path, rel: str) -> str | None:
     """The first component from root to the file that is a link or reparse point, or None."""
     current = root
@@ -445,8 +496,7 @@ def link_on_path(root: Path, rel: str) -> str | None:
             st = os.lstat(current)
         except OSError:
             return None  # missing: reported by the read step
-        reparse = getattr(st, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT
-        if stat.S_ISLNK(st.st_mode) or reparse:
+        if stat.S_ISLNK(st.st_mode) or _is_link_reparse(st):
             return current.relative_to(root).as_posix()
     return None
 
@@ -471,18 +521,25 @@ def to_repo_relative(gate: Gate, arg: str, cwd: Path) -> str | None:
 
 
 def match_git_spelling(gate: Gate, rel: str) -> str:
-    """git's own spelling of a path (Windows paths are case-insensitive), or rel unchanged."""
+    """git's own spelling of a file or folder (Windows paths are case-insensitive), or rel unchanged."""
     known = set(gate.tracked) | gate.untracked
-    if rel in known or sys.platform != "win32":
+    if not rel or rel in known or sys.platform != "win32":
         return rel
     folded = {k.casefold(): k for k in known}
-    return folded.get(rel.casefold(), rel)
+    if rel.casefold() in folded:
+        return folded[rel.casefold()]
+    prefix = rel.casefold() + "/"
+    for k in sorted(gate.tracked):
+        if k.casefold().startswith(prefix):
+            return k[: len(rel)]
+    return rel
 
 
 def select_files(gate: Gate, args: list[str], cwd: Path) -> Selection:
     """Apply the gate to the command-line paths: explicit files and folder expansion."""
     sel = Selection()
     seen: set[str] = set()
+    explicit: set[str] = set()
 
     def add(path: str) -> None:
         if path not in seen:
@@ -504,6 +561,8 @@ def select_files(gate: Gate, args: list[str], cwd: Path) -> Selection:
             if reason:
                 sel.refused.append((rel, reason))
             else:
+                sel.from_folder.discard(rel)  # named explicitly: a problem must abort
+                explicit.add(rel)
                 add(rel)
         elif under:
             linked = link_on_path(gate.root, rel) if rel else None
@@ -517,7 +576,7 @@ def select_files(gate: Gate, args: list[str], cwd: Path) -> Selection:
                 if reason:
                     sel.omitted.append((path, reason))
                 else:
-                    if path not in seen:
+                    if path not in explicit:
                         sel.from_folder.add(path)
                     add(path)
         elif rel and link_on_path(gate.root, rel):
@@ -545,6 +604,10 @@ def read_attachment(root: Path, rel: str, limit: int) -> tuple[str | None, int, 
         # Windows has no O_NOFOLLOW: the opened file must be the one that was checked.
         if (st.st_ino, st.st_dev) != (before.st_ino, before.st_dev):
             return None, 0, "changed while it was being checked"
+        # A hard link shares its content with another name, possibly an ignored file
+        # or one outside the repository.
+        if st.st_nlink > 1:
+            return None, 0, "a hard link (its content may also live under an ignored or outside name)"
         chunks, remaining = [], limit + 1
         while remaining > 0:
             chunk = os.read(fd, min(remaining, 1 << 20))
@@ -555,10 +618,12 @@ def read_attachment(root: Path, rel: str, limit: int) -> tuple[str | None, int, 
         data = b"".join(chunks)
     finally:
         os.close(fd)
+    # Binary first: a large image under a named folder is omitted as binary, it does
+    # not count against the size cap.
+    if b"\0" in data[:8192]:
+        return None, st.st_size, "binary (NUL byte)"
     if len(data) > limit:
         return None, st.st_size, "too large"
-    if b"\0" in data[:8192]:
-        return None, len(data), "binary (NUL byte)"
     try:
         return data.decode("utf-8"), len(data), None
     except UnicodeDecodeError:
@@ -606,6 +671,55 @@ def collect_repo_attachments(args: list[str], max_bytes: int, cwd: Path) -> list
     for att in attachments:
         print(f"  {len(att.text.encode('utf-8')):>9}  {att.path}", file=sys.stderr)
     return attachments
+
+
+BASE_REF_RE = re.compile(r"[A-Za-z0-9._/@^~-]{1,200}")
+
+
+def collect_diff(base: str, max_bytes: int, cwd: Path) -> Attachment:
+    """The diff, built by the script from files the gate allows.
+
+    `git diff` on its own would carry hunks of force-added ignored files, a committed
+    .env, or git-crypt plaintext through textconv. Here every changed path goes
+    through the same checks as --repo; refused paths are left out and named on
+    stderr; the diff runs with --no-textconv and --no-ext-diff.
+    """
+    if base.startswith("-") or not BASE_REF_RE.fullmatch(base):
+        fail(f"--diff base {base!r} is not a plain git ref")
+    try:
+        gate = load_gate(cwd)
+        spec = ["HEAD"] if base == "HEAD" else [f"{base}...HEAD"]
+        names = _z_paths(run_git(gate.git, ["diff", "--name-only", "-z", "--no-renames", *spec, "--"], gate.root))
+        allowed: list[str] = []
+        for path in names:
+            reason = ineligible_reason(gate, path)
+            if not reason and link_on_path(gate.root, path):
+                reason = f"a link on its path ({link_on_path(gate.root, path)})"
+            if reason:
+                print(f"gemini_review: left out of the diff: {path}: {reason}", file=sys.stderr)
+            else:
+                allowed.append(path)
+        chunks = []
+        for i in range(0, len(allowed), 100):  # keep each command line short on Windows
+            chunks.append(run_git(
+                gate.git,
+                ["diff", "--no-textconv", "--no-ext-diff", "--no-color", "--no-renames", *spec, "--",
+                 *allowed[i:i + 100]],
+                gate.root, literal_paths=True,
+            ))
+    except RuntimeError as exc:
+        fail(f"--diff refused, nothing sent: {exc}", EXIT_REFUSED)
+    raw = b"".join(chunks)
+    if not raw.strip():
+        fail("--diff refused, nothing sent: no changed file passed the git check", EXIT_REFUSED)
+    if len(raw) > max_bytes:
+        fail(
+            f"--diff refused, nothing sent: the diff is {len(raw)} bytes, over --max-bytes {max_bytes}",
+            EXIT_REFUSED,
+        )
+    label = "git diff HEAD (working tree)" if base == "HEAD" else f"git diff {base}...HEAD"
+    print(f"gemini_review: attaching {label}: {len(allowed)} files, {len(raw)} bytes", file=sys.stderr)
+    return Attachment(label, raw.decode("utf-8", errors="replace"))
 
 
 # ---------------------------------------------------------------- modes
@@ -696,6 +810,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--ask", default="", help="the one focused question (optional)")
     parser.add_argument("--repo", nargs="+", metavar="PATH",
                         help="repository files or folders to attach, each checked by git first")
+    parser.add_argument("--diff", nargs="?", const="HEAD", metavar="BASE",
+                        help="attach the diff (working tree vs HEAD, or BASE...HEAD), built from files git allows")
     parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES,
                         help=f"cap on attached file bytes, default {DEFAULT_MAX_BYTES}")
     parser.add_argument("--dry-run", action="store_true",
@@ -713,18 +829,21 @@ def main(argv: list[str] | None = None) -> None:
     if args.setup:
         run_setup(args)
         return
-    if args.dry_run and not args.repo:
-        parser.error("--dry-run needs --repo")
+    if args.dry_run and not (args.repo or args.diff):
+        parser.error("--dry-run needs --repo or --diff")
     attachments: list[Attachment] = []
-    if args.repo:
+    if args.repo or args.diff:
         if not args.file:
-            parser.error("--repo needs --file: the brief that says what to look at and why")
-        attachments = collect_repo_attachments(args.repo, args.max_bytes, Path.cwd())
+            parser.error("--repo and --diff need --file: the brief that says what to look at and why")
+        if args.diff:
+            attachments.append(collect_diff(args.diff, args.max_bytes, Path.cwd()))
+        if args.repo:
+            attachments += collect_repo_attachments(args.repo, args.max_bytes, Path.cwd())
         if args.dry_run:
             # No model lookup and no network: the body is what would be sent, minus
             # the model's output limit.
+            brief = read_brief(args)  # a dry run also proves the brief is readable
             if args.save_request:
-                brief = read_brief(args)
                 body = build_body(brief, args.thinking, attachments)
                 Path(args.save_request).write_text(json.dumps(body, indent=2), encoding="utf-8")
             return

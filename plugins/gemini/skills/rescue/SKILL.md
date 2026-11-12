@@ -40,7 +40,7 @@ $PY "${CLAUDE_PLUGIN_ROOT}/scripts/gemini_review.py" --file "<brief file>" [--re
 echo "exit=$?" > "<scratch>/gemini-exit.txt"
 ```
 
-Run it from inside the repository when you use `--repo`. If `${CLAUDE_PLUGIN_ROOT}` is empty, use `../../scripts/gemini_review.py` resolved from this skill's base directory. Never chain interpreters with `||`: the script's exit codes would trigger the next one.
+Run it from inside the repository when you use `--repo`; paths are relative to the repository root, whatever your current folder. If `${CLAUDE_PLUGIN_ROOT}` is empty, use `../../scripts/gemini_review.py` resolved from this skill's base directory. Never chain interpreters with `||`: the script's exit codes would trigger the next one.
 
 ## Exit codes
 
@@ -49,7 +49,7 @@ Run it from inside the repository when you use `--repo`. If `${CLAUDE_PLUGIN_ROO
 | 0 | answer printed | show it |
 | 1 | key missing, HTTP error, bad model id | show stderr; suggest `/gemini:setup` |
 | 2 | usage error, or Python could not open the script | show stderr; if it says "can't open file", recompute the path from this skill's base directory |
-| 3 | `--repo` refused a file (or not in a git repo); nothing was sent | read the reasons, narrow the paths or move the needed content into the brief yourself, run again |
+| 3 | `--repo` refused a file (or not in a git repo); nothing was sent | drop or replace the refused paths and run again; never copy a refused file's content into the brief |
 | 5 | unknown model alias | show the available list it printed |
 
 ## Answer shape
