@@ -367,6 +367,23 @@ class FlowableBuilder(HTMLParser):
         col_widths = [self.frame_width * w / norm for w in widths]
 
         cell, head = self.styles["cell"], self.styles["cellHead"]
+
+        # Never let a column be narrower than its longest single word (else "PostgreSQL"
+        # breaks mid-word). Measured in the bold face, since header/bold cells are widest.
+        from reportlab.pdfbase.pdfmetrics import stringWidth
+        pad = 14
+        min_widths = []
+        for c in range(ncols):
+            words = [w for r in range(len(rows)) for w in re.sub(r"<[^>]+>", " ", rows[r][c]).split()]
+            longest_word = max((stringWidth(w, head.fontName, head.fontSize) for w in words), default=0)
+            min_widths.append(min(longest_word + pad, self.frame_width / ncols))
+        fixed = [c for c in range(ncols) if col_widths[c] < min_widths[c]]
+        if fixed:
+            free = [c for c in range(ncols) if c not in fixed]
+            spare = self.frame_width - sum(min_widths[c] for c in fixed)
+            free_total = sum(col_widths[c] for c in free) or 1
+            col_widths = [min_widths[c] if c in fixed else col_widths[c] * spare / free_total
+                          for c in range(ncols)]
         data = [
             [Paragraph(text, head if (has_header and r == 0) else cell) for text in row]
             for r, row in enumerate(rows)

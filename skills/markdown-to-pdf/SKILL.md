@@ -2,7 +2,7 @@
 name: markdown-to-pdf
 description: "Convert Markdown into a plain, internal-grade PDF with clickable links (including timestamped video deep-links), real tables, locally rendered Mermaid diagrams, and light header/footer stamps chosen by audience preset (Page N of M, version and date, plus either the source filename for your own research prints or your contact line for a deliverable). Use when the user wants to print or share a Markdown doc as a PDF that should read as a working document, not a branded deliverable: briefings, architecture notes, internal memos, work notes, docs with Mermaid diagrams or comparison tables. Triggers: 'markdown to pdf', 'print this markdown', 'make a PDF of this doc/briefing/note', 'PDF with mermaid diagrams', 'render the tables properly in PDF', 'internal PDF, not the branded one', 'plain PDF for the team'. NOT for polished client-facing documents (use branded-docx or brief-creator) and not for e-reader output (use markdown-to-epub, the reading/Kindle sibling)."
 metadata:
-  version: 0.2.0
+  version: 0.2.1
 ---
 
 # markdown-to-pdf
