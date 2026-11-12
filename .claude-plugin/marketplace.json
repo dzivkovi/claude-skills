@@ -1,0 +1,20 @@
+{
+  "name": "dzivkovi",
+  "owner": {
+    "name": "Daniel Zivkovic"
+  },
+  "metadata": {
+    "description": "Claude Code plugins from the claude-skills library."
+  },
+  "plugins": [
+    {
+      "name": "gemini",
+      "description": "Ask Google's Gemini for a read-only peer review or second opinion: /gemini:review, /gemini:rescue, /gemini:setup.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Daniel Zivkovic"
+      },
+      "source": "./plugins/gemini"
+    }
+  ]
+}

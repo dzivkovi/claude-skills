@@ -1,0 +1,34 @@
+# Gemini CLI policy for gemini_review.py repo mode (loaded with --policy, user tier).
+#
+# An allow-list, not a single deny. Settings-driven ALLOW rules (tools.allowed,
+# trusted MCP servers) load at user tier priority 1 to 300 and beat plan mode's
+# own catch-all deny, so every rule here sits above 300.
+#
+# Why grep_search is not allowed: in Gemini CLI 0.35.2 it read gitignored files
+# that read_file refused (canary, 2026-11-11). Why the argsPattern denies: glob and
+# list_directory accept a model-supplied respect_git_ignore=false that returns the
+# NAMES of ignored files.
+
+[[rule]]
+decision = "deny"
+priority = 900
+deny_message = "gemini_review repo mode allows read_file, list_directory and glob only."
+
+[[rule]]
+toolName = ["read_file", "list_directory", "glob"]
+decision = "allow"
+priority = 950
+
+[[rule]]
+toolName = ["glob", "list_directory"]
+argsPattern = '"respect_git_ignore":false'
+decision = "deny"
+priority = 999
+deny_message = "gemini_review repo mode keeps .gitignore filtering on."
+
+[[rule]]
+toolName = ["glob", "list_directory"]
+argsPattern = '"respect_gemini_ignore":false'
+decision = "deny"
+priority = 999
+deny_message = "gemini_review repo mode keeps .geminiignore filtering on."
